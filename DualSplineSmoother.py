@@ -15,7 +15,7 @@ class DualSplineSmoother(object):
 	'''
 
 
-	def __init__(self, yp, scale, sm=200):
+	def __init__(self, yp, workdir, scale, sm=200):
 		'''
 		Constructor
 		'''
@@ -24,6 +24,9 @@ class DualSplineSmoother(object):
 		self.xPos = (self.l-2)/2 #fPos = (self.l-2)/2 + 2
 		tnsc = 2/scale
 		print tnsc
+		plt.rcParams['font.size'] = 24
+		plt.rcParams['lines.linewidth'] = 2.4
+		self.workdir = workdir
 		
 		avProfilePoints = yp[:self.l]
 		self.avx = np.append(np.append([0], np.sort(np.tanh(tnsc*avProfilePoints[:self.xPos]))),[1])
@@ -70,14 +73,14 @@ class DualSplineSmoother(object):
 		plt.subplot(212)
 		plt.scatter(self.sigmax,self.sigma)
 		plt.plot(tp,self.s(tp))
-		plt.savefig("results/splineFit.pdf")
+		plt.savefig(self.workdir+"/splineFit.pdf")
 		if order > 0:
 			plt.clf()
 			plt.subplot(211)
 			plt.plot(tp,self.m(tp,1))
 			plt.subplot(212)
 			plt.plot(tp,self.s(tp,1))
-			plt.savefig("results/splineDerivative.pdf")
+			plt.savefig(self.workdir+"/splineDerivative.pdf")
 	
 	def plotSplineData(self, dataContainer, yscale):
 		plt.clf()
@@ -89,35 +92,47 @@ class DualSplineSmoother(object):
 		plt.plot(tp, self.m(tp)+np.sqrt(self.s(tp))+dataContainer.background,'r--', linewidth=2)
 		plt.plot(tp, self.m(tp)-np.sqrt(self.s(tp))+dataContainer.background,'r--', linewidth=2)
 		plt.plot(tp, np.zeros(100) + dataContainer.background, '--', c='#BBBBBB', alpha=0.8)
-		plt.savefig("results/splineVsData.pdf")
+		plt.savefig(self.workdir+"/splineVsData.pdf")
 		
 	def plotBinnedData(self, dataContainer):
 		plt.clf()
 		tp = np.linspace(0, 1, dataContainer.numBins)
-		plt.plot(self.m(tp), self.s(tp))
+		tpHD = np.linspace(0, 1, 500)
+		plt.plot(self.m(tpHD), self.s(tpHD))
 		plt.plot(dataContainer.avs, np.power(dataContainer.stds,2), 'o')
-		plt.savefig("results/noiseVsBins.pdf")
+		plt.savefig(self.workdir+"/noiseVsBins.pdf")
 		plt.clf()
-		plt.plot(tp, self.m(tp),'r', linewidth=2)
+		plt.plot(tpHD, self.m(tpHD),'r', linewidth=2)
 		plt.plot(tp, dataContainer.avs, 'o')
-		plt.savefig("results/splineVsBins.pdf")
+		plt.savefig(self.workdir+"/splineVsBins.pdf")
 		plt.clf()
-		plt.plot(tp, self.s(tp),'r', linewidth=2)
+		plt.plot(tpHD, self.s(tpHD),'r', linewidth=2)
 		plt.plot(tp, np.power(dataContainer.stds,2), 'o')
-		plt.savefig("results/spatialNoiseVsBins.pdf")
+		plt.savefig(self.workdir+"/spatialNoiseVsBins.pdf")
 	
 	def plotFisherInfo(self, dataContainer, ymax):
 		plt.clf()
-		t = np.linspace(0, 1, 100)
+		t = np.linspace(0, 1, 500)
 		
 		minf = lambda x: -1 * self.m(x)
 		minx = fminbound(minf, 0, 1)
 		fval = self.m(minx)
-		fi = lambda a, s, sp: 4*s / (np.power(a,2)+2*np.power(sp,2)/s)
-		fiapp = lambda a, s, sp: 4*s / (np.power(a,2))
+		
+		noisemean = UnivariateSpline(self.m(t)/fval, self.s(t)/fval/fval)
+		self.se = noisemean(0)
+		
+		fi = lambda a, sa, sp: 2*np.power(sa, 2)/ (np.power(a,2)*2*sa+np.power(sp,2))
+		fiapp = lambda a, sa, sp: sa / (np.power(a,2))
 		plt.xlim(0, 1)
 		plt.ylim(0, ymax)
 		print 'whop whop'
-		plt.plot(t, fi(self.m(t,1)/fval, self.s(t)/fval, self.s(t, 1)/fval))
-		plt.plot(t, fiapp(self.m(t,1)/fval, self.s(t)/fval, self.s(t, 1)/fval), 'r')
-		plt.savefig("results/fisherInfo.pdf")
+		plt.plot(t, fi(self.m(t,1)/fval, self.s(t)/fval/fval-self.se, self.s(t, 1)/fval/fval))
+		plt.plot(t, fiapp(self.m(t,1)/fval, self.s(t)/fval/fval-self.se, self.s(t, 1)/fval/fval), 'r')
+		plt.savefig(self.workdir+"/variance.pdf")
+		plt.plot(t, np.sqrt(fi(self.m(t,1)/fval, self.s(t)/fval/fval-self.se, self.s(t, 1)/fval/fval)))
+		plt.plot(t, np.sqrt(fiapp(self.m(t,1)/fval, self.s(t)/fval/fval-self.se, self.s(t, 1)/fval/fval)), 'r')
+		plt.savefig(self.workdir+"/stddev.pdf")
+		plt.clf()
+		plt.plot(t, 1/fi(self.m(t,1)/fval, self.s(t)/fval/fval-self.se, self.s(t, 1)/fval/fval))
+		plt.plot(t, 1/fiapp(self.m(t,1)/fval, self.s(t)/fval/fval-self.se, self.s(t, 1)/fval/fval), 'r')
+		plt.savefig(self.workdir+"/fisherInfo.pdf")

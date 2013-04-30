@@ -88,8 +88,16 @@ class ExpData(object):
 		self.avsNorm = self.avs / self.scale
 		self.stdsNorm = self.stds / self.scale
 			
-	def plotData(self):
+	def plotData(self, wd):
 		plt.clf()
 		plt.scatter(self.points[0],self.points[1]+self.background, c='b', marker='o', s=5)
-		plt.savefig("results/expData.pdf")
+		plt.savefig(wd+"/expData.pdf")
 		
+	def saveData(self, filename):
+		tp = np.linspace(0, 1, self.numBins)
+		with open(filename ,"w+") as f:
+			for i in range(0, len(tp)):
+				f.write( str(tp[i]) + ", " + str(self.avs[i])+ ", " + str(self.stds[i]))
+				if i < 999:
+					f.write("\n")
+		f.close()

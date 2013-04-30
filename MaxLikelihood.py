@@ -46,7 +46,7 @@ class MaxLikelihood(object):
 						data=dataContainer.points,
 						scale=dataContainer.scale,
 						dim = genomeSize,
-						tolerance = 0.0001,
+						tolerance = 0.00001,
 						max_evaluations = 4000000)
 
 		ind = max(final_pop)
@@ -59,14 +59,24 @@ class MaxLikelihood(object):
 		x = np.array(xl)
 		if(x.min() <= 0):
 			return 10000000
-		cp = x[:-3]
+		tnsc = 2/args.get('scale')
+		l = len(x)-3
+		xPos = (l-2)/2
+		avProfilePoints = x[:-3]
+		avx = np.append(np.append([0], np.sort(np.tanh(tnsc*avProfilePoints[:xPos]))),[1])
+		av = avProfilePoints[xPos:]
+		m = UnivariateSpline(avx, av)
 		se = x[-3]
 		s = x[-2]
 		p = x[-1]
-		d = len(cp)
-		tp = np.linspace(0, 1, d)
-		m = UnivariateSpline(tp, cp)
 		pts = args.get('data')
+		
+		derPoints = np.linspace(0, 1, 27)
+		mDer = m(derPoints, 1)
+		penalty = 0
+		if(np.any(mDer > 0)):
+			mPts = np.select([mDer > 0], [mDer])
+			penalty = np.sqrt(np.dot(mPts,mPts))
 		
 		try:
 			res = (np.power((pts[1]-m(pts[0])),2)/(2*s*(p*np.power(m(pts[0]),2)+m(pts[0])+se)) + 
@@ -78,15 +88,20 @@ class MaxLikelihood(object):
 		if np.isnan(val):
 			print x
 			return 1000000
-		return val
+			
+		return penalty + val
 
 	def generate(self, random, args):
-		d=args.get('dim')
-		sc = args.get('scale')
-		c=sc*np.random.rand(d)
-		for i in range(0, d):
-			c[i] = c[i]*(d-i)/d
-		return np.concatenate((c,np.array([0.01*sc,0.01*sc, 5.0/sc]))).tolist()
+		l=args.get('dim')-3
+		sc = args.get("scale")
+		xPos = (l-2)/2
+		fPos = (l-2)/2 + 2
+		c=sc*np.random.rand(fPos)
+		for i in range(0, fPos):
+			c[i] = c[i]*(fPos-i)/fPos
+		x = np.linspace(0, 1, xPos+2) #uniform distr
+		xFinal = sc/2*np.arctanh(x[1:-1]) #remove 0 and 1
+		return np.concatenate((xFinal,c,np.array([0.01*sc,0.01*sc, 5.0/sc]))).tolist()
 	
 	def logpUnbias(self, xl, args):
 		x = np.array(xl)
