@@ -110,7 +110,7 @@ class DualSplineSmoother(object):
 		plt.plot(tp, np.power(dataContainer.stds,2), 'o')
 		plt.savefig(self.workdir+"/spatialNoiseVsBins.pdf")
 	
-	def plotFisherInfo(self, dataContainer, ymax):
+	def plotFisherInfo(self, dataContainer, ymax, ymaxsq):
 		plt.clf()
 		t = np.linspace(0, 1, 500)
 		
@@ -124,11 +124,13 @@ class DualSplineSmoother(object):
 		fi = lambda a, sa, sp: 2*np.power(sa, 2)/ (np.power(a,2)*2*sa+np.power(sp,2))
 		fiapp = lambda a, sa, sp: sa / (np.power(a,2))
 		plt.xlim(0, 1)
-		plt.ylim(0, ymax)
+		plt.ylim(0, ymaxsq)
 		print 'whop whop'
 		plt.plot(t, fi(self.m(t,1)/fval, self.s(t)/fval/fval-self.se, self.s(t, 1)/fval/fval))
 		plt.plot(t, fiapp(self.m(t,1)/fval, self.s(t)/fval/fval-self.se, self.s(t, 1)/fval/fval), 'r')
 		plt.savefig(self.workdir+"/variance.pdf")
+		plt.clf()
+		plt.ylim(0, ymax)
 		plt.plot(t, np.sqrt(fi(self.m(t,1)/fval, self.s(t)/fval/fval-self.se, self.s(t, 1)/fval/fval)))
 		plt.plot(t, np.sqrt(fiapp(self.m(t,1)/fval, self.s(t)/fval/fval-self.se, self.s(t, 1)/fval/fval)), 'r')
 		plt.savefig(self.workdir+"/stddev.pdf")

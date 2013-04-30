@@ -90,7 +90,7 @@ class SplineSmoother(object):
 		plt.plot(tp, dataContainer.avs, 'o')
 		plt.savefig(self.workdir+"/splineVsBins.pdf")
 	
-	def plotFisherInfo(self, dataContainer, s, p, se, ymax):
+	def plotFisherInfo(self, dataContainer, s, p, se, ymax, ymaxsq):
 		plt.clf()
 		t = np.linspace(0, 1, 1000)
 		
@@ -105,10 +105,12 @@ class SplineSmoother(object):
 		(2 * s * (p * np.power(m,2) + m) + np.power(s * (2 * p * m + 1), 2)))
 		fiapp = lambda m, mp: s * (p * np.power(m,2) + m) / np.power(mp,2)
 		plt.xlim(0, 1)
-		plt.ylim(0, ymax)
+		plt.ylim(0, ymaxsq)
 		plt.plot(t, fi(self.m(t)/fval, self.m(t, 1)/fval))
 		plt.plot(t, fiapp(self.m(t)/fval, self.m(t, 1)/fval), 'r')
 		plt.savefig(self.workdir+"/variance.pdf")
+		plt.clf()
+		plt.ylim(0, ymax)
 		plt.plot(t, np.sqrt(fi(self.m(t)/fval, self.m(t, 1)/fval)))
 		plt.plot(t, np.sqrt(fiapp(self.m(t)/fval, self.m(t, 1)/fval)), 'r')
 		plt.savefig(self.workdir+"/stddev.pdf")

@@ -10,7 +10,7 @@ from DualSplineSmoother import DualSplineSmoother
 
 if __name__ == '__main__':
 	csvName = 'gregor.csv'
-	model = 'intext'
+	model = 'none'
 	wd = "final/" + csvName[:-4] + "_" + model
 	dataContainer = ExpData(csvName, 50)
 	dataContainer.plotData(wd)
@@ -29,14 +29,14 @@ if __name__ == '__main__':
 		ss.showSpline()
 		ss.plotSplineData(dataContainer, xbest[-2], xbest[-1], xbest[-3], dataContainer.max)
 		ss.plotBinnedData(dataContainer, xbest[-2], xbest[-1], xbest[-3], dataContainer.minx, dataContainer.maxx)
-		ss.plotFisherInfo(dataContainer, xbest[-2], xbest[-1], xbest[-3], 0.1)
+		ss.plotFisherInfo(dataContainer, xbest[-2], xbest[-1], xbest[-3], 0.1, 0.005)
 		ss.saveSpline(wd+"/spline.csv")
 	else:
 		ss = DualSplineSmoother(xbest, wd, dataContainer.scale, None)
 		ss.showSpline(1)
 		ss.plotSplineData(dataContainer, dataContainer.max)
 		ss.plotBinnedData(dataContainer)
-		ss.plotFisherInfo(dataContainer, 0.1)
+		ss.plotFisherInfo(dataContainer, 0.1, 0.005)
 		ss.saveSpline(wd+"/spline.csv")
 		ss.saveSigmaSpline(wd+"/sigmaspline.csv")
 		
