@@ -10,7 +10,7 @@ from DualSplineSmoother import DualSplineSmoother
 
 if __name__ == '__main__':
 	csvName = 'gregor.csv'
-	model = 'none'
+	model = 'intext'
 	wd = "final/" + csvName[:-4] + "_" + model
 	dataContainer = ExpData(csvName, 50)
 	dataContainer.plotData(wd)
