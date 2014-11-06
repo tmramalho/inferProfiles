@@ -106,16 +106,47 @@ class LiuHugeDataset(object):
 		y = filtFrame['y']
 		return x, y
 
+	def get_length_percentile_binned_data(self, length_percentile, lower=True, num_bins=50, quality=1):
+		filtFrame = self.frame[(self.frame['qua'] <= quality)]
+		lengths = filtFrame.len
+		if lower:
+			perc = np.percentile(lengths, length_percentile)
+			x = filtFrame[filtFrame.len <= perc]['x'].values
+			y = filtFrame[filtFrame.len <= perc]['y'].values
+		else:
+			perc = np.percentile(lengths, 100-length_percentile)
+			x = filtFrame[filtFrame.len >= perc]['x'].values
+			y = filtFrame[filtFrame.len >= perc]['y'].values
+
+		bins = [[] for i in range(0, num_bins)]
+
+		for i in range(0, len(x)):
+			b = np.floor(x[i]*num_bins)
+			if b >= num_bins:
+				b = num_bins - 1
+			bins[int(b)].append(y[i])
+
+		avs = []
+		stds = []
+
+		for abin in bins:
+			npbin = np.array(abin)
+			avs.append(np.average(npbin))
+			stds.append(np.std(npbin))
+
+		return bins, avs, stds
+
+
 	def getIndividualProfiles(self, nump = 50, quality = 1, length = False, minx = 0):
 		nEmbryos = int(self.frame.embryoNum.max() + 1)
 		profiles = []
 		lens = []
 		counter = 0
 		for n in xrange(nEmbryos):
-			leftSide  = fly.frame[(fly.frame.embryoNum == n) &
-								(fly.frame.side == 0) &
-								(fly.frame.qua <= quality) &
-								(fly.frame.x > minx)]
+			leftSide  = self.frame[(self.frame.embryoNum == n) &
+								(self.frame.side == 0) &
+								(self.frame.qua <= quality) &
+								(self.frame.x > minx)]
 			if leftSide.x.values.shape[0] > 0:
 				if length:
 					profiles.append([leftSide.x.values*leftSide.len/500, leftSide.y.values])
@@ -123,10 +154,10 @@ class LiuHugeDataset(object):
 					profiles.append([leftSide.x.values, leftSide.y.values])
 				lens.append([leftSide.len.values[0], leftSide.cf.values[0], n])
 				counter += 1
-			rightSide = fly.frame[(fly.frame.embryoNum == n) &
-								(fly.frame.side == 1) &
-								(fly.frame.qua <= quality) &
-								(fly.frame.x > minx)]
+			rightSide = self.frame[(self.frame.embryoNum == n) &
+								(self.frame.side == 1) &
+								(self.frame.qua <= quality) &
+								(self.frame.x > minx)]
 			if rightSide.x.values.shape[0] > 0:
 				if length:
 					profiles.append([rightSide.x.values*rightSide.len/500, rightSide.y.values])
@@ -549,14 +580,14 @@ class LiuHugeDataset(object):
 		print corr[1]/corr[2], corr[4]/corr[2]
 
 if __name__ == '__main__':
-	fly = LiuHugeDataset()
-	#fly.plotHistogramsLogNormalForBins(quality=2, bs=100, sbs=50)
-	#fly.plotIndividualProfiles(nump = 200)
-	#fly.plotCorrectedHistogramsLogNormalForBins(100, 50, 2)
-	#fly.plotAdjustedHistograms(100, 50, 2)
-	#fly.plotSidedProfiles(quality=2)
-	#fly.lookAtCrossCorrelation(2, 100, 1000)
-	#fly.fitLogExponentials(2, 6000, False)
-	#fly.sampleExponentials(10000)
-	fly.correlateExponentialsLength()
-	#fly.pairWiseCorrelation()
+	self = LiuHugeDataset()
+	#self.plotHistogramsLogNormalForBins(quality=2, bs=100, sbs=50)
+	#self.plotIndividualProfiles(nump = 200)
+	#self.plotCorrectedHistogramsLogNormalForBins(100, 50, 2)
+	#self.plotAdjustedHistograms(100, 50, 2)
+	#self.plotSidedProfiles(quality=2)
+	#self.lookAtCrossCorrelation(2, 100, 1000)
+	#self.fitLogExponentials(2, 6000, False)
+	#self.sampleExponentials(10000)
+	self.correlateExponentialsLength()
+	#self.pairWiseCorrelation()
