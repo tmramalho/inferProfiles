@@ -49,7 +49,7 @@ def smooth_arr_prof(p):
 	return profile(x)
 
 def smooth_arr_bg(p):
-	m = (3000-5)/(3000-150)
+	m = (3000-5)/(2000-150)
 	s = lambda x: np.abs(5 + m*(x-150))
 	mask = np.isnan(p)
 	p[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), p[~mask])
@@ -175,10 +175,63 @@ if __name__ == '__main__':
 	all_lengths = np.array(right_lengths + left_lengths)
 
 	'''
+	GFP session largest
+	'''
+	gfp_data = sio.loadmat('data/scaling_data/DataSets/ScalingDataLargestBcdGFPSession.mat', squeeze_me=True)
+	dat = gfp_data['RawData']['M'].item()['Em'].item()
+	GFP_L = dat['EL'].astype('float64')
+	GFP_profiles = []
+	for p in dat['Profile']:
+		GFP_profiles.append(smooth_arr_prof(p))
+
+	'''
+	Same analysis for temp varied dataset
+	'''
+	tmp_data = sio.loadmat('data/scaling_data/DataSets/ScalingDataTempVariedBcd.mat', squeeze_me=True)
+	dat = tmp_data['RawData'].item()[0]['Em'].item()
+	temp_L = dat['EL'].astype('float64')
+	temp_profiles = []
+	for p in dat['Profile']:
+		temp_profiles.append(smooth_arr_prof(p))
+
+	'''
+	Same analysis for LE and SE embryos
+	'''
+	dd = sio.loadmat('data/scaling_data/DataSets/ScalingData1And23.mat', squeeze_me=True)
+	dat = dd['RawData']['M'].item()
+	profiles_symmetric = []
+	profiles_ventral = []
+	profiles_dorsal = []
+	len_symmetric = []
+	len_ventral = []
+	len_dorsal = []
+	for p,or_v,le_v, ag_v in zip(dat['Em'][1]['Profile'], dat['Em'][1]['orientation'], dat['Em'][1]['EL'], dat['Em'][1]['Emage']):
+		# age binning
+		if ag_v < 140 or ag_v > 175:
+			continue
+		# outlier removal
+		if np.any(p[:100,1,0] < 200):
+			continue
+		if or_v == 0:
+			profiles_symmetric.append(smooth_arr_bg(p[:,1,0]))
+			len_symmetric.append(le_v)
+			profiles_symmetric.append(smooth_arr_bg(p[:,1,1]))
+			len_symmetric.append(le_v)
+		else:
+			profiles_ventral.append(smooth_arr_bg(p[:,1,1]))
+			len_ventral.append(le_v)
+			profiles_dorsal.append(smooth_arr_bg(p[:,1,0]))
+			len_dorsal.append(le_v)
+
+	'''
 	Perform pca analysis on all profiles, then randomly subsample 150 and 300 from
 	the whole set
 	'''
-	pca, res = do_pca_analysis(all_profiles, all_lengths, '2XAAll_1', plot=True)
+	combo_profiles = np.concatenate([all_profiles, GFP_profiles, temp_profiles, profiles_dorsal, profiles_symmetric, profiles_ventral])
+	combo_lengths = np.concatenate([all_lengths, GFP_L, temp_L, len_dorsal, len_symmetric, len_ventral])
+	pca, res = do_pca_analysis(combo_profiles, combo_lengths, 'MEGACOMBO')
+	# results.append(res)
+	pca, res = do_pca_analysis(all_profiles, all_lengths, '2XAAll_1', pca)
 	results.append(res)
 	sample = np.random.choice(all_profiles.shape[0], 150, replace=False)
 	pca, res = do_pca_analysis(all_profiles[sample], all_lengths[sample], '2XA(150)_1', pca)
@@ -217,46 +270,13 @@ if __name__ == '__main__':
 		                left_lengths + right_lengths, 'ind_{0}_{1}_both'.format(s,quality-1), pca)
 		results.append(res)
 
-	'''
-	Same analysis for temp varied dataset
-	'''
-	bcd_data = sio.loadmat('data/scaling_data/DataSets/ScalingDataTempVariedBcd.mat', squeeze_me=True)
-	dat = bcd_data['RawData'].item()[0]['Em'].item()
-	L = dat['EL'].astype('float64')
-	profiles = []
-	for p in dat['Profile']:
-		profiles.append(smooth_arr_prof(p))
-	pca, res = do_pca_analysis(profiles, L, 'Temp_varied', pca, True)
+
+	pca, res = do_pca_analysis(GFP_profiles, GFP_L, 'GFP_session', pca)
+	results.append(res)
+	pca, res = do_pca_analysis(temp_profiles, temp_L, 'Temp_varied', pca)
 	results.append(res)
 
-	'''
-	Same analysis for LE and SE embryos
-	'''
-	dd = sio.loadmat('data/scaling_data/DataSets/ScalingData1And23.mat', squeeze_me=True)
-	dat = dd['RawData']['M'].item()
-	profiles_symmetric = []
-	profiles_ventral = []
-	profiles_dorsal = []
-	len_symmetric = []
-	len_ventral = []
-	len_dorsal = []
-	for p,or_v,le_v, ag_v in zip(dat['Em'][1]['Profile'], dat['Em'][1]['orientation'], dat['Em'][1]['EL'], dat['Em'][1]['Emage']):
-		# age binning
-		if ag_v < 140 or ag_v > 175:
-			continue
-		# outlier removal
-		if np.any(p[:100,1,0] < 200):
-			continue
-		if or_v == 0:
-			profiles_symmetric.append(smooth_arr_bg(p[:,1,0]))
-			len_symmetric.append(le_v)
-			profiles_symmetric.append(smooth_arr_bg(p[:,1,1]))
-			len_symmetric.append(le_v)
-		else:
-			profiles_ventral.append(smooth_arr_bg(p[:,1,1]))
-			len_ventral.append(le_v)
-			profiles_dorsal.append(smooth_arr_bg(p[:,1,0]))
-			len_dorsal.append(le_v)
+
 	pca, res = do_pca_analysis(profiles_symmetric, len_symmetric, 'LEandSE_sym', pca, True)
 	results.append(res)
 	pca, res = do_pca_analysis(profiles_ventral, len_ventral, 'LEandSE_ven', pca, True)
@@ -264,21 +284,14 @@ if __name__ == '__main__':
 	pca, res = do_pca_analysis(profiles_dorsal, len_dorsal, 'LEandSE_dor', pca, True)
 	results.append(res)
 
-	'''
-	GFP session largest
-	'''
-	bcd_data = sio.loadmat('data/scaling_data/DataSets/ScalingDataLargestBcdGFPSession.mat', squeeze_me=True)
-	dat = bcd_data['RawData']['M'].item()['Em'].item()
-	L = dat['EL'].astype('float64')
-	profiles = []
-	for p in dat['Profile']:
-		profiles.append(smooth_arr_prof(p))
-	pca, res = do_pca_analysis(profiles, L, 'GFP_session', pca)
-	results.append(res)
-
 	np.save(ensure_dir('data/tmp/results.npy'), results)
 
 	df = pd.DataFrame(results, columns=['Linename', 'n', 'p1', 'r1', 'p2', 'r2', 'vL'])
+	'''
+	convert units of vL to percentage of mean length
+	'''
+	print np.mean(combo_lengths)
+	df.vL = df.vL/np.mean(combo_lengths)*100
 	make_bubble_plot(df, 'p2', 'r2', 'n')
 	make_bubble_plot(df, 'p1', 'r1', 'n')
 	make_bubble_plot(df, 'p2', 'vL', 'n')

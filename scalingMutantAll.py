@@ -35,21 +35,21 @@ def ensure_dir(f):
 def do_pca_analysis(profiles, lens, name=''):
 	L = lens-np.mean(lens)
 	lx = np.linspace(np.min(L), np.max(L), 100)
-	#print L.shape
+	print L.shape
 	pr = []
 	for i,p in enumerate(profiles):
 		mask = np.isnan(p)
 		p[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), p[~mask])
-		av, va = moving_average(np.log(p), 46, 100)
-		profiles.append(av)
+		av, va = moving_average(p, 46, 100)
+		pr.append(av)
 	y = np.array(pr)
 	pca = PCA(n_components=2)
 	pca.fit(y)
-	#print pca.explained_variance_ratio_
+	print pca.explained_variance_ratio_
 	yp = pca.transform(y)
 	x = np.linspace(0,0.9,y.shape[1])
 	plt.subplot(231)
-	plt.scatter(yp[:,0], yp[:,1], c=L/float(np.max(L)), cmap=plt.get_cmap('jet'))
+	plt.scatter(yp[:,0], yp[:,1])#, c=L/float(np.max(L)), cmap=plt.get_cmap('jet'))
 	plt.subplot(232)
 	m,b,r,p,s = stats.linregress(L, yp[:,0])
 	min_p = p
@@ -60,9 +60,6 @@ def do_pca_analysis(profiles, lens, name=''):
 	plt.title("pc1 r:{0:.2f},p:{1:.2e}".format(r,p))
 	plt.subplot(233)
 	m,b,r,p,s = stats.linregress(L, yp[:,1])
-	if p < min_p:
-		min_p = p
-		min_r = r
 	plt.scatter(L, yp[:,1])
 	plt.plot(lx, m*lx+b, color='r')
 	plt.fill_between(lx, (m-s)*lx+b, (m+s)*lx+b, alpha=0.3, color='r')
@@ -87,22 +84,22 @@ def do_pca_analysis(profiles, lens, name=''):
 	plt.suptitle('{0} n:{1}'.format(name, L.shape[0]))
 	plt.savefig(ensure_dir("plots/full_mutant/pca_{0}.pdf".format(name)))
 	plt.clf()
-	print name, L.shape[0], min_p, min_r
 
 if __name__ == '__main__':
-	for csv_filename in os.listdir('data/mutant'):
+	for csv_filename in os.listdir('data/criticality'):
 		if csv_filename.endswith(".mat"):
 			print csv_filename
-			gap_data = sio.loadmat('data/mutant/{0}'.format(csv_filename), squeeze_me=True)
+			gap_data = sio.loadmat('data/criticality/{0}'.format(csv_filename), squeeze_me=True)
 			gap_data = gap_data['data']
-			pos = (gap_data['age'] >= 145) & (gap_data['age'] <= 155)
+			pos = (gap_data['age'] >= 40) & (gap_data['orient'] == 1)
 			ind = np.where(pos)[0]
-			do_pca_analysis(gap_data['Kni'][ind], gap_data['L'][ind], 'Kni early {0}'.format(csv_filename[:-4]))
-			do_pca_analysis(gap_data['Kr'][ind], gap_data['L'][ind], 'Kr early {0}'.format(csv_filename[:-4]))
-			do_pca_analysis(gap_data['Hb'][ind], gap_data['L'][ind], 'Hb early {0}'.format(csv_filename[:-4]))
-			do_pca_analysis(gap_data['Gt'][ind], gap_data['L'][ind], 'Gt early {0}'.format(csv_filename[:-4]))
-			pos = (gap_data['age'] >= 170) & (gap_data['age'] <= 180)
-			do_pca_analysis(gap_data['Kni'][ind], gap_data['L'][ind], 'Kni late {0}'.format(csv_filename[:-4]))
-			do_pca_analysis(gap_data['Kr'][ind], gap_data['L'][ind], 'Kr late {0}'.format(csv_filename[:-4]))
-			do_pca_analysis(gap_data['Hb'][ind], gap_data['L'][ind], 'Hb late {0}'.format(csv_filename[:-4]))
-			do_pca_analysis(gap_data['Gt'][ind], gap_data['L'][ind], 'Gt late {0}'.format(csv_filename[:-4]))
+			do_pca_analysis(gap_data['Kni'][ind], gap_data['AP'][ind], 'Kni {0} late'.format(csv_filename[:-4]))
+			do_pca_analysis(gap_data['Kr'][ind], gap_data['AP'][ind], 'Kr {0} late'.format(csv_filename[:-4]))
+			do_pca_analysis(gap_data['Hb'][ind], gap_data['AP'][ind], 'Hb {0} late'.format(csv_filename[:-4]))
+			do_pca_analysis(gap_data['Gt'][ind], gap_data['AP'][ind], 'Gt {0} late'.format(csv_filename[:-4]))
+			pos = (gap_data['age'] < 20) & (gap_data['orient'] == 1)
+			ind = np.where(pos)[0]
+			do_pca_analysis(gap_data['Kni'][ind], gap_data['AP'][ind], 'Kni {0} early'.format(csv_filename[:-4]))
+			do_pca_analysis(gap_data['Kr'][ind], gap_data['AP'][ind], 'Kr {0} early'.format(csv_filename[:-4]))
+			do_pca_analysis(gap_data['Hb'][ind], gap_data['AP'][ind], 'Hb {0} early'.format(csv_filename[:-4]))
+			do_pca_analysis(gap_data['Gt'][ind], gap_data['AP'][ind], 'Gt {0} early'.format(csv_filename[:-4]))
