@@ -99,5 +99,5 @@ for var in itertools.product(['gt_var', 'gt', 'bcd'], [True, False], [True, Fals
 	yt = pca.inverse_transform(v)
 	plt.plot(x, yt.T, alpha=0.5)
 	plt.title('pc2')
-	plt.savefig(ensure_dir("plots/pca_test_{0}_{1}_{2}_{3}.pdf".format(gt, vt, vs, s_corr)))
+	plt.savefig(ensure_dir("plots/test/pca_test_{0}_{1}_{2}_{3}.pdf".format(gt, vt, vs, s_corr)))
 	plt.clf()

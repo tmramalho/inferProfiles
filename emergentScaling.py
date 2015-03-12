@@ -19,7 +19,7 @@ def sample_conc_given_l(x, l):
 Evolve the system in time
 '''
 n_pos = 100
-n_samples = 1000
+n_samples = 10000
 n_times = 1000
 a = 0.5
 mu_a = 0.01
@@ -75,7 +75,8 @@ Get error from estimator
 err = []
 for i in xrange(n_pos):
 	pc = values[1, i*n_pos:(i+1)*n_pos].flatten()
-	x_std = np.std(s(pc))
+	x_tru = values[0, i*n_pos:(i+1)*n_pos].flatten()
+	x_std = np.std(s(pc)-x_tru)
 	x = i/float(n_pos)
 	err.append((x, x_std))
 err = np.array(err)
