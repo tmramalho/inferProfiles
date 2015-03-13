@@ -22,6 +22,9 @@ from scipy.ndimage import filters
 from sklearn.decomposition import PCA
 import scipy.stats as stats
 
+import config
+reload(config)
+
 def moving_average(series, sigma=3, ks=27):
 	b = gaussian(ks, sigma)
 	average = filters.convolve1d(series, b / b.sum())
@@ -103,7 +106,7 @@ def plot_pca(y, pca, yp, L, name):
 		plt.title('pc2')
 	except ValueError:
 		pass
-	plt.savefig(ensure_dir("plots/bcdpca/{0}.pdf".format(name)))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, "bcdpca", "{0}.pdf".format(name))))
 	plt.clf()
 
 def do_pca_analysis(profiles, lens, name='', pca=None, plot=True, print_debug=False):
@@ -163,7 +166,7 @@ def plot_ks_analysis(lower_y, upper_y, pval, name):
 	plt.ylabel('pvalue', fontsize=10)
 	plt.xlabel('x/L')
 	plt.suptitle(name)
-	plt.savefig(ensure_dir("plots/bcdpca/ks_{0}.pdf".format(name)))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, "plots", "bcdpca", "ks_{0}.pdf".format(name))))
 	plt.clf()
 
 def do_ks_analysis(profiles, lens, name='', plot=False):
@@ -216,7 +219,7 @@ def make_summary_plot(res, ks_res, min_sample_size=11):
 	plt.title('summary of bicoid data')
 	plt.ylabel('r_sq')
 	plt.xlabel('sigma_l')
-	plt.savefig(ensure_dir('plots/summary/bcd_bubbles.pdf'))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 'bcd_bubbles.pdf')))
 	plt.clf()
 
 def make_table(res, ks_res, min_sample_size=11):
@@ -306,7 +309,7 @@ def make_table(res, ks_res, min_sample_size=11):
 	ax.set_xticklabels(labels, rotation = 90)
 	ax.set_yticklabels(['ks', 'pca', 'n_samples', 'sigma_l', 'r_sq', 'test1', 'test2\n(use 5% confidence)'])
 	plt.tight_layout()
-	plt.savefig(ensure_dir('plots/summary/bcd_table.pdf'))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 'bcd_table.pdf')))
 	plt.clf()
 
 	ks_ratio = np.array(ks_ratio)
@@ -321,13 +324,13 @@ def make_table(res, ks_res, min_sample_size=11):
 	plt.subplot(414)
 	plt.bar(np.arange(len(sigma_l)), sigma_l, 1)
 	plt.tight_layout()
-	plt.savefig(ensure_dir('plots/summary/bcd_bar.pdf'))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 'bcd_bar.pdf')))
 	plt.clf()
 
 
 if __name__ == '__main__':
 	try:
-		(results, ks_results) = np.load('data/tmp/results.npy')
+		(results, ks_results) = np.load(os.path.join(config.tmp_path, 'results.npy'))
 	except IOError:
 		results = []
 		ks_results = []
@@ -335,7 +338,8 @@ if __name__ == '__main__':
 		'''
 		Load 2XA data
 		'''
-		bcd_data = sio.loadmat('data/scaling_data/DataSets/2XAAllEmbryos.mat', squeeze_me=True)
+		bcd_data = sio.loadmat(os.path.join(config.scaling_data_path, 
+                                               '2XAAllEmbryos.mat'), squeeze_me=True)
 		bcd_data = bcd_data['AllEmbryos_2XA']
 		sessions = np.unique(bcd_data['Session'])
 		quality = 1
@@ -365,7 +369,9 @@ if __name__ == '__main__':
 		'''
 		Load scaling data
 		'''
-		bcd_sdata = sio.loadmat('data/scaling_data/DataSets/ScalingDataLargeSetBcd.mat', squeeze_me=True)
+		bcd_sdata = sio.loadmat(os.path.join(config.scaling_data_path,
+                                                'ScalingDataLargeSetBcd.mat'),
+                                   squeeze_me=True)
 		bcd_sdata = bcd_sdata['RawData']['M'].item()['Em'].item()
 		scaling_lengths = []
 		scaling_profiles = []
@@ -378,7 +384,9 @@ if __name__ == '__main__':
 		'''
 		GFP session largest
 		'''
-		gfp_data = sio.loadmat('data/scaling_data/DataSets/ScalingDataLargestBcdGFPSession.mat', squeeze_me=True)
+		gfp_data = sio.loadmat(os.path.join(config.scaling_data_path,
+                                               'ScalingDataLargestBcdGFPSession.mat'),
+                                  squeeze_me=True)
 		dat = gfp_data['RawData']['M'].item()['Em'].item()
 		GFP_L = dat['EL'].astype('float64')
 		GFP_profiles = []
@@ -389,7 +397,9 @@ if __name__ == '__main__':
 		'''
 		Same analysis for temp varied dataset
 		'''
-		tmp_data = sio.loadmat('data/scaling_data/DataSets/ScalingDataTempVariedBcd.mat', squeeze_me=True)
+		tmp_data = sio.loadmat(os.path.join(config.scaling_data_path,
+                                               'ScalingDataTempVariedBcd.mat'),
+                                  squeeze_me=True)
 		dat = tmp_data['RawData'].item()[0]['Em'].item()
 		temp_L = dat['EL'].astype('float64')
 		temp_profiles = []
@@ -400,7 +410,8 @@ if __name__ == '__main__':
 		'''
 		Same analysis for LE and SE embryos
 		'''
-		dd = sio.loadmat('data/scaling_data/DataSets/ScalingData1And23.mat', squeeze_me=True)
+		dd = sio.loadmat(os.path.join(config.scaling_data_path,
+                                         'ScalingData1And23.mat'), squeeze_me=True)
 		dat = dd['RawData']['M'].item()
 		profiles_symmetric = []
 		profiles_ventral = []
@@ -482,7 +493,7 @@ if __name__ == '__main__':
 		pvals = do_ks_analysis(profiles_dorsal, len_dorsal, 'LEandSE_dor')
 		ks_results.append(pvals)
 
-		np.save(ensure_dir('data/tmp/results.npy'), (results, ks_results))
+		np.save(ensure_dir(os.path.join(config.tmp_path, 'results.npy')), (results, ks_results))
 
 	make_summary_plot(results, ks_results)
 	make_table(results, ks_results)

@@ -8,6 +8,9 @@ from sklearn.decomposition import PCA
 import scipy.stats as stats
 import re
 
+import config
+reload(config)
+
 def moving_average(series, sigma=3, ks=27):
 	b = gaussian(ks, sigma)
 	average = filters.convolve1d(series, b / b.sum())
@@ -55,7 +58,8 @@ def plot_pca(y, pca, yp, L, name):
 	yt = pca.inverse_transform(v)
 	plt.plot(x, yt.T, alpha=0.5)
 	plt.title('pc2')
-	plt.savefig(ensure_dir("plots/full_mutant/pca_{0}.pdf".format(name)))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, "full_mutant", 
+                                          "pca_{0}.pdf".format(name))))
 	plt.clf()
 
 def do_pca_analysis(profiles, lens, name='', plot=False, print_debug=False):
@@ -119,7 +123,8 @@ def plot_ks_analysis(lower_y, upper_y, pval, name):
 	plt.ylabel('pvalue', fontsize=10)
 	plt.xlabel('x/L')
 	plt.suptitle(name)
-	plt.savefig(ensure_dir("plots/full_mutant/ks_{0}.pdf".format(name)))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path,
+                                          "full_mutant", "ks_{0}.pdf".format(name))))
 	plt.clf()
 
 def do_ks_analysis(profiles, lens, name='', plot=False):
@@ -183,7 +188,7 @@ def summary_plot(fr):
 	plt.ylabel('pvalue')
 	for xl in np.arange(n-1):
 		plt.plot((xl+0.5,xl+0.5), plt.ylim(), 'k-', alpha=0.5)
-	plt.savefig("plots/full_mutant/summary_median.pdf")
+	plt.savefig(os.path.join(config.plots_path, "full_mutant", "summary_median.pdf"))
 	plt.clf()
 	for i,k in enumerate(fr):
 		for r in fr[k]:
@@ -204,7 +209,7 @@ def summary_plot(fr):
 	plt.ylabel('pvalue')
 	for xl in np.arange(n-1):
 		plt.plot((xl+0.5,xl+0.5), plt.ylim(), 'k-', alpha=0.5)
-	plt.savefig("plots/full_mutant/summary_mean.pdf")
+	plt.savefig(os.path.join(config.plots_path, "full_mutant", "summary_mean.pdf"))
 	plt.clf()
 	l_var = []
 	size = []
@@ -217,7 +222,7 @@ def summary_plot(fr):
 	plt.plot(np.arange(n), size, c='r')
 	plt.ylabel('n')
 	plt.xticks(np.arange(n), names, rotation=90, size='small')
-	plt.savefig("plots/full_mutant/sum_diag.pdf")
+	plt.savefig(os.path.join(config.plots_path, "full_mutant", "sum_diag.pdf"))
 	plt.clf()
 
 def rejection_analysis(fr, fkr):
@@ -251,7 +256,7 @@ def rejection_analysis(fr, fkr):
 	plt.imshow(rejection_matrix[:,:,0], interpolation='nearest', cmap='RdYlBu_r')
 	plt.xticks(np.arange(len(gene_lut.keys())), sorted(gene_lut, key=gene_lut.get))
 	plt.yticks(np.arange(len(fr.keys())), [trim_name(k) for k in fr.keys()])
-	plt.savefig(ensure_dir('plots/rejection_matrix.pdf'))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'rejection_matrix.pdf')))
 
 def make_summary_plot(fr, fkr):
 	nmax = len(fr.keys())/2+1
@@ -284,7 +289,8 @@ def make_summary_plot(fr, fkr):
 		plt.ylabel('r_sq')
 		plt.xlabel('log (fold change)')
 	plt.tight_layout()
-	plt.savefig(ensure_dir('plots/summary/gap_bubbles.pdf'.format(i)))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 
+                                          'gap_bubbles.pdf')))
 	plt.clf()
 
 def make_paper_plot(fr, fkr):
@@ -326,7 +332,8 @@ def make_paper_plot(fr, fkr):
 		plt.ylabel('r_sq')
 		plt.xlabel('log (fold change)')
 	plt.tight_layout()
-	plt.savefig(ensure_dir('plots/summary/paper_gap_bubbles.pdf'.format(i)))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 
+                                          'paper_gap_bubbles.pdf')))
 	plt.clf()
 
 def make_table(fr, fkr):
@@ -421,7 +428,8 @@ def make_table(fr, fkr):
 		ax.set_yticklabels(['ks', 'pca', 'n_samples', 'sigma_l', 'test1', 'test'])
 		plt.title(mutant_name)
 		plt.tight_layout()
-		plt.savefig(ensure_dir('plots/summary/gap{0}_table.pdf'.format(i)))
+		plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 
+                                               'gap{0}_table.pdf'.format(i))))
 		plt.clf()
 
 		ks_ratio = np.array(ks_ratio)
@@ -436,24 +444,27 @@ def make_table(fr, fkr):
 		plt.subplot(414)
 		plt.bar(np.arange(len(sigma_l)), sigma_l, 1)
 		plt.tight_layout()
-		plt.savefig(ensure_dir('plots/summary/gap{0}_bar.pdf'.format(i)))
+		plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 
+                                               'gap{0}_bar.pdf'.format(i))))
 		plt.clf()
 
 if __name__ == '__main__':
 	plot_flag = False
-	res_path = 'data/tmp/mutant_all_res.npy'
+	res_path = os.path.join(config.tmp_path, 'mutant_all_res.npy')
 	try:
 		full_results, full_ks_results = np.load(res_path)
 	except IOError:
 		print 'no results found. please wait a sec'
 		full_results = dict()
 		full_ks_results = dict()
-		for csv_filename in os.listdir('data/criticality'):
+		for csv_filename in os.listdir(os.path.join(config.mutant_path)):
 			if csv_filename.endswith(".mat"):
 				print csv_filename
 				results = []
 				ks_results = []
-				gap_data = sio.loadmat('data/criticality/{0}'.format(csv_filename), squeeze_me=True)
+				gap_data = sio.loadmat(os.path.join(config.mutant_path, 
+                                                           '{0}'.format(csv_filename)),
+                                              squeeze_me=True)
 				gap_data = gap_data['data']
 				pos = (gap_data['age'] >= 40) & (gap_data['age'] <= 50) & (gap_data['orient'] == 1) & (gap_data['genotype'] == 2)
 				ind = np.where(pos)[0]
