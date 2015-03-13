@@ -5,6 +5,16 @@ Created on Fri Mar 13 14:39:07 2015
 @author: Eric
 
 Create plots that compare results from the Bcd and gap-gene datasets. Currently requires scalingBicoidFinalReally and scalingMutantAll to have been run.
+
+Suffixes at the end of variable names (Eric's convention):
+a: numpy array
+b: boolean
+d: dictionary
+df: pandas DataFrame
+l: list
+s: string
+t: tuple
+Underscores indicate chaining: for instance, "foo_t_t" is a tuple of tuples
 """
 
 import numpy as np
@@ -31,6 +41,25 @@ def make_summary_plot(res, min_sample_size=11):
             5 Name of data set
             6 Standard deviation of embryo lengths
     """
+    
+    tag_below_l = ['Hb_Bcd2x',
+                   'ind_213',
+                   'Kni_Bcd2X',
+                   'Kr_Bcd2X',
+                   'scaling_large',
+                   'scaling_large(100)']
+    # Specify tags to plot on the underside of the point for clarity  
+    tag_right_l = ['Gt_bcdE1',
+                   'ind_26', 
+                   'ind_152', 
+                   'Kni_Bcd2X',
+                   'Kni_etsl',
+                   'LEandSE_dor', 
+                   'scaling_large',
+                   'scaling_large(100)']
+    # Specify tags to plot on the right side for clarity    
+    
+    plt.figure(figsize=(16, 12))
     for i,dataset in enumerate(res):
         if dataset[4] > min_sample_size:
             p1 = np.mean(dataset[1])
@@ -41,30 +70,62 @@ def make_summary_plot(res, min_sample_size=11):
             r_sq = np.mean(r_samples)
             r_ci = [[r_sq-np.percentile(r_samples, 2.5)], [np.percentile(r_samples, 97.5)-r_sq]]
             s_size = dataset[4]
-            sigma_l = dataset[6]
+            sigma_l = dataset[-1]['norm_sigma_l']
             col = 'r' if pca_std[1] < 0.05 else 'b'
-            plt.errorbar(sigma_l, r_sq, yerr=r_ci,marker='o', ms=np.sqrt(s_size),
+            plt.errorbar(100*sigma_l, r_sq, yerr=r_ci,marker='o', ms=np.sqrt(s_size),
 	                   alpha=0.5, c=col)
-            plt.annotate(dataset[5], xy = (sigma_l, r_sq), xytext = (-20, 20),
-				  textcoords = 'offset points', ha = 'right', va = 'bottom',
+            if dataset[5] in tag_below_l:
+                y_sign = -1
+                va = 'top'
+            else:
+                y_sign = 1
+                va = 'bottom'
+            if dataset[5] in tag_right_l:
+                x_sign = 1
+                ha = 'left'
+            else:
+                x_sign = -1
+                ha = 'right'
+            plt.annotate(dataset[5], xy = (100*sigma_l, r_sq),
+                         xytext = (x_sign*20, y_sign*20),
+				  textcoords = 'offset points', ha = ha, va = va,
 				  bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.2),
 				  arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0', ec='0.1'))
     plt.title('Summary of all data')
     plt.ylabel('R-squared')
-    plt.xlabel('sigma_L (%)')
+    plt.xlabel('sigma_L (% egg length)')
     plt.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
-                                                  'r_sq_vs_sigma_l')))
-    plt.clf()
+                                                  'r_sq_vs_sigma_l.pdf')))
     
     
 
 if __name__ == '__main__':
+    """ Notes on plots:
+    - make_summary_plot: we're only passing late-stage embryos to it for clarity.
+    """
     
-    # Import data
-    (pca_bcd, __) = np.load(os.path.join(config.tmp_path, 'results.npy'))
-    (pca_mutant, __) = np.load(os.path.join(config.tmp_path, 'mutant_all_res.npy'))
-    # {{{get the cases you want from pca_mutant into a list}}}
+    # Import only selected data
+    (pca_bcd_a, __) = np.load(os.path.join(config.tmp_path, 'results.npy'))
+    pca_bcd = list(pca_bcd_a)
+    (pca_mutant_d, __) = np.load(os.path.join(config.tmp_path, 'mutant_all_res.npy'))
+    pca_mutant = []
+    mutants = ['etsl', 'Bcd2X', 'bcdE1']
+    for i, key in enumerate(pca_mutant_d.keys()):
+        mutant_name = scalingMutantAll.trim_name(pca_mutant_d[key][0][5])[4:]
+        if mutant_name not in mutants:
+            continue
+        for dataset in pca_mutant_d[key]:
+            gene_name, __, stage = dataset[5].split(' ')
+            if stage == 'early':
+                continue
+            dataset_l = list(dataset)
+            dataset_l[5] = gene_name + '_' + mutant_name
+            pca_mutant.append(tuple(dataset_l))
     pca_results = pca_bcd + pca_mutant
+    
+    # Remove ventral datasets
+    pca_results = [dataset for i, dataset in enumerate(pca_results)
+                   if 'ven' not in dataset[5]]  
     
     # Create plot of R^2 vs. sigma_L for all datasets
     make_summary_plot(pca_results)

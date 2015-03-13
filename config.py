@@ -10,8 +10,7 @@ b: boolean
 d: dictionary
 df: pandas DataFrame
 l: list
-path: path string
-s: string
+s (or path): string
 t: tuple
 Underscores indicate chaining: for instance, "foo_t_t" is a tuple of tuples
 """
@@ -22,7 +21,7 @@ import socket
 
 ## Paths
 hostname_s = socket.gethostname()
-erics_computers_s_l = ['esmith10laptop', 'esmith11desktop', 'esmith13laptop', 'phy-tglab11']
+erics_computers_s_l = ['esmith11desktop', 'esmith13laptop']
 if hostname_s in erics_computers_s_l:
 	mutant_path = 'C:\\E\\Dropbox\\Lab\\MatlabData\\Staining\\Mariela_criticality'
 	plots_path = 'C:\\E\\Dropbox\\Lab\\05_Scaling\\Plots\\inferProfiles\\tmp'
