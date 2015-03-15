@@ -28,7 +28,7 @@ reload(scalingMutantAll)
 
 
 
-def make_summary_plot(res, min_sample_size=11):
+def make_summary_plot(res, plot_name, min_sample_size=12, label_flag=True, title_s=''):
     """ From scalingBcdFinalReally.make_summary_plot. 
     - res is a list of results from do_pca_analysis, in scalingBcdFinalReally
             and scalingMutantAll
@@ -61,41 +61,47 @@ def make_summary_plot(res, min_sample_size=11):
     
     plt.figure(figsize=(16, 12))
     for i,dataset in enumerate(res):
-        if dataset[4] > min_sample_size:
-            p1 = np.mean(dataset[1])
-            p2 = np.mean(dataset[3])
-            samples = dataset[2*np.argmin([p1,p2])+1]
-            pca_std = [np.percentile(samples, 2.5), np.percentile(samples, 97.5)]
-            r_samples = np.power(dataset[2*np.argmin([p1,p2])], 2)
-            r_sq = np.mean(r_samples)
-            r_ci = [[r_sq-np.percentile(r_samples, 2.5)], [np.percentile(r_samples, 97.5)-r_sq]]
-            s_size = dataset[4]
-            sigma_l = dataset[-1]['norm_sigma_l']
-            col = 'r' if pca_std[1] < 0.05 else 'b'
-            plt.errorbar(100*sigma_l, r_sq, yerr=r_ci,marker='o', ms=np.sqrt(s_size),
+        if dataset[4] < min_sample_size:
+            continue
+        p1 = np.mean(dataset[1])
+        p2 = np.mean(dataset[3])
+        samples = dataset[2*np.argmin([p1,p2])+1]
+        pca_std = [np.percentile(samples, 2.5), np.percentile(samples, 97.5)]
+        r_samples = np.power(dataset[2*np.argmin([p1,p2])], 2)
+        r_sq = np.mean(r_samples)
+        r_ci = [[r_sq-np.percentile(r_samples, 2.5)],
+                [np.percentile(r_samples, 97.5)-r_sq]]
+        s_size = dataset[4]
+        sigma_l = dataset[-1]['norm_sigma_l']
+        col = 'r' if pca_std[1] < 0.05 else 'b'
+        plt.errorbar(100*sigma_l, r_sq, yerr=r_ci,marker='o', ms=np.sqrt(s_size),
 	                   alpha=0.5, c=col)
-            if dataset[5] in tag_below_l:
-                y_sign = -1
-                va = 'top'
-            else:
-                y_sign = 1
-                va = 'bottom'
-            if dataset[5] in tag_right_l:
-                x_sign = 1
-                ha = 'left'
-            else:
-                x_sign = -1
-                ha = 'right'
-            plt.annotate(dataset[5], xy = (100*sigma_l, r_sq),
-                         xytext = (x_sign*20, y_sign*20),
+        if not label_flag:
+            continue
+        if dataset[5] in tag_below_l:
+            y_sign = -1
+            va = 'top'
+        else:
+            y_sign = 1
+            va = 'bottom'
+        if dataset[5] in tag_right_l:
+            x_sign = 1
+            ha = 'left'
+        else:
+            x_sign = -1
+            ha = 'right'
+        plt.annotate(dataset[5], xy = (100*sigma_l, r_sq),
+                     xytext = (x_sign*20, y_sign*20),
 				  textcoords = 'offset points', ha = ha, va = va,
-				  bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.2),
-				  arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0', ec='0.1'))
-    plt.title('Summary of all data')
+				  bbox = dict(boxstyle = 'round,pad=0.5',
+                                 fc = 'yellow', alpha = 0.2),
+				  arrowprops = dict(arrowstyle = '->', 
+                                       connectionstyle = 'arc3,rad=0', ec='0.1'))
+    plt.title(title_s)
     plt.ylabel('R-squared')
     plt.xlabel('sigma_L (% egg length)')
     plt.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
-                                                  'r_sq_vs_sigma_l.pdf')))
+                                                         plot_name)))
     
     
 
@@ -104,11 +110,16 @@ if __name__ == '__main__':
     - make_summary_plot: we're only passing late-stage embryos to it for clarity.
     """
     
-    # Import only selected data
+    # Import data
     (pca_bcd_a, __) = np.load(os.path.join(config.tmp_path, 'results.npy'))
     pca_bcd = list(pca_bcd_a)
     (pca_mutant_d, __) = np.load(os.path.join(config.tmp_path, 'mutant_all_res.npy'))
-    pca_mutant = []
+    
+    
+    ## Only plot selected mutants
+    
+    # Filter all but select mutants
+    pca_mutant_selected = []
     mutants = ['etsl', 'Bcd2X', 'bcdE1']
     for i, key in enumerate(pca_mutant_d.keys()):
         mutant_name = scalingMutantAll.trim_name(pca_mutant_d[key][0][5])[4:]
@@ -120,12 +131,34 @@ if __name__ == '__main__':
                 continue
             dataset_l = list(dataset)
             dataset_l[5] = gene_name + '_' + mutant_name
-            pca_mutant.append(tuple(dataset_l))
-    pca_results = pca_bcd + pca_mutant
+            pca_mutant_selected.append(tuple(dataset_l))
+    pca_results_selected = pca_bcd + pca_mutant_selected
     
     # Remove ventral datasets
-    pca_results = [dataset for i, dataset in enumerate(pca_results)
+    pca_results_selected = [dataset for i, dataset in enumerate(pca_results_selected)
                    if 'ven' not in dataset[5]]  
     
-    # Create plot of R^2 vs. sigma_L for all datasets
-    make_summary_plot(pca_results)
+    # Create plot of R^2 vs. sigma_L
+    make_summary_plot(pca_results_selected,
+                      plot_name='r_sq_vs_sigma_l__selected.pdf',
+                      title_s='Summary of dorsal/symmetric Bcd and selected mutant data')
+    
+    
+    ## Plot all mutants
+    
+    # Keep all mutants
+    pca_mutant_all = []
+    for i, key in enumerate(pca_mutant_d.keys()):
+        mutant_name = scalingMutantAll.trim_name(pca_mutant_d[key][0][5])[4:]
+        for dataset in pca_mutant_d[key]:
+            gene_name, __, stage = dataset[5].split(' ')
+            dataset_l = list(dataset)
+            dataset_l[5] = gene_name + '_' + mutant_name
+            pca_mutant_all.append(tuple(dataset_l))
+    pca_results = pca_bcd + pca_mutant_all
+    
+    # Create plot of R^2 vs. sigma_L
+    make_summary_plot(pca_results,
+                      label_flag=False,
+                      plot_name='r_sq_vs_sigma_l__all.pdf',
+                      title_s='Summary of all Bcd and mutant data')
