@@ -9,6 +9,10 @@ from scipy.ndimage import filters
 from sklearn.decomposition import PCA
 import scipy.stats as stats
 
+import config
+reload(config)
+
+
 def ensure_dir(f):
 	d = os.path.dirname(f)
 	if not os.path.exists(d):
@@ -55,7 +59,8 @@ def plot_pca(y, pca, yp, L, name):
 	yt = pca.inverse_transform(v)
 	plt.plot(x, yt.T, alpha=0.5)
 	plt.title('pc2')
-	plt.savefig(ensure_dir("plots/wt_gap/pca_{0}.pdf".format(name)))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, "wt_gap",
+                                          "pca_{0}.pdf".format(name))))
 	plt.clf()
 
 def do_pca_analysis(profiles, lens, name='', plot=False):
@@ -105,7 +110,8 @@ def plot_ks_analysis(lower_y, upper_y, pval, name):
 	plt.ylabel('pvalue', fontsize=10)
 	plt.xlabel('x/L')
 	plt.suptitle(name)
-	plt.savefig(ensure_dir("plots/wt_gap/ks_{0}.pdf".format(name)))
+	plt.savefig(ensure_dir(os.path.join(config.plots_path, "wt_gap",
+                                          "ks_{0}.pdf".format(name))))
 	plt.clf()
 	plt.grid(True, which='both')
 
@@ -157,7 +163,8 @@ class ScalingContainer(object):
 
 	def __init__(self):
 		print 'Reading matlab...'
-		dd = sio.loadmat('data/scaling_data/DataSets/ScalingData1And23.mat', squeeze_me=True)
+		dd = sio.loadmat(os.path.join(config.scaling_data_path,
+                                         'ScalingData1And23.mat'), squeeze_me=True)
 		dat = dd['RawData']['M'].item()
 		print 'Generating data...'
 		self.data_containers = []
@@ -165,7 +172,8 @@ class ScalingContainer(object):
 			d1 = dict()
 			d1['Flylinename'] = dat['Flylinename'][i] + str(i)
 			d1['Genename'] = dat['Genename'][i]
-			c = np.concatenate([aux[..., np.newaxis] for aux in dat['Em'][i]['Profile']], axis=3)
+			c = np.concatenate([aux[..., np.newaxis] for aux
+                                    in dat['Em'][i]['Profile']], axis=3)
 			d1['meas'] = c.astype('float64')
 			d1['age'] = dat['Em'][i]['Emage'].astype('float64')
 			d1['L'] = dat['Em'][i]['EL'].astype('float64')
@@ -275,11 +283,16 @@ class ScalingContainer(object):
 					sm._A = []
 					plt.suptitle("{0} {1}".format(dc['Flylinename'], g))
 					plt.colorbar(sm, cax=plt.subplot(gs[:, 1]))
-					plt.savefig(ensure_dir("plots/wt_gap/timeplot_{0}_{1}_{2}.pdf".format(dc['Flylinename'], g, li)))
+					plt.savefig(ensure_dir(os.path.join(config.plots_path, "wt_gap", "timeplot_{0}_{1}_{2}.pdf".format(dc['Flylinename'], g, li))))
 					plt.clf()
 
-	def analysis(self, di=20, plot=False):
+	def analysis(self, di=20, plot=False, save_results=False):
 		names = ['Symmetric', 'Ventral', 'Dorsal']
+
+		if save_results:
+                 results = []
+                 ks_results = []
+
 		for dc in self.data_containers:
 			nc = dc['nc'][0]
 			Lav = dc['L'].mean()
@@ -314,18 +327,26 @@ class ScalingContainer(object):
 							print "Few samples!"
 							continue
 						name = "{0}_{1}_{2}_{3}".format(dc['Flylinename'], g, names[oi], bi_name)
-						_,p1,_,p2,_,_,_ = do_pca_analysis(y, L, name, plot)
-						pv = do_ks_analysis(y, L, name, plot)
-						'''
-						Rejection analysis
-						'''
-						reject_ratio = np.where(pv<0.01)[0].shape[0] / float(pv.shape[0])
-						p1m = np.mean(p1)
-						p2m = np.mean(p2)
-						print name, y.shape[0]
-						if (p1m < 0.01 or p2m < 0.01) and reject_ratio > 0.1:
+                                	pca_result = do_pca_analysis(y, L, name, plot)
+                                	more_stats_d = {'norm_sigma_l': np.std(L) / Lav}
+                                	pca_result += (more_stats_d,)
+                                	(p1, p2) = (pca_result[1], pca_result[3])
+                                	pv = do_ks_analysis(y, L, name, plot)
+                                	if save_results:
+                                	    results.append(pca_result)
+                                	    ks_results.append(pv)
+                                	'''
+                                	Rejection analysis
+                                	'''
+                                	reject_ratio = np.where(pv<0.01)[0].shape[0] / float(pv.shape[0])
+                                	p1m = np.mean(p1)
+                                	p2m = np.mean(p2)
+                                	print name, y.shape[0]
+                                	if (p1m < 0.01 or p2m < 0.01) and reject_ratio > 0.1:
 							print 'REJECT'
 							print p1m, p2m, reject_ratio
+		if save_results:
+		    np.save(ensure_dir(os.path.join(config.tmp_path, 'wt_gap.npy')), (results, ks_results))
 
 
 if __name__ == '__main__':
