@@ -19,6 +19,7 @@ Underscores indicate chaining: for instance, "foo_t_t" is a tuple of tuples
 
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib import patches
 import os
 
 import config
@@ -28,7 +29,13 @@ reload(scalingMutantAll)
 
 
 
-def make_summary_plot(res, plot_name, min_sample_size=12, label_flag=True, title_s=''):
+def make_summary_plot(res,
+                      label_flag=True,
+                      min_sample_size=12,
+                      title_s='',
+                      type_by_color_flag=False,
+                      xlim_t=(),
+                      ylim_t=()):
     """ From scalingBcdFinalReally.make_summary_plot.
     - res is a list of results from do_pca_analysis, in scalingBcdFinalReally
             and scalingMutantAll
@@ -60,7 +67,12 @@ def make_summary_plot(res, plot_name, min_sample_size=12, label_flag=True, title
                    'scaling_large(100)']
     # Specify tags to plot on the right side for clarity
 
-    plt.figure(figsize=(16, 12))
+    line_alpha = 0.5 if label_flag else 1
+    line_width = None if label_flag else 2
+
+    fig = plt.figure(figsize=(8, 6))
+    plt.rcParams['font.family'] = 'Arial'
+    ax = plt.subplot(1, 1, 1)
     for i, case_t in enumerate(res):
         if case_t[4] < min_sample_size:
             continue
@@ -76,9 +88,17 @@ def make_summary_plot(res, plot_name, min_sample_size=12, label_flag=True, title
         assert isinstance(case_t[-1], dict)
         # Make sure that the PCA analysis outputted a dictionary with additional stats
         sigma_l = case_t[-1]['norm_sigma_l']
-        col = 'r' if pca_std[1] < 0.05 else 'b'
-        plt.errorbar(100*sigma_l, r_sq, yerr=r_ci,marker='o', ms=np.sqrt(s_size),
-	                   alpha=0.5, c=col)
+        if type_by_color_flag:
+            color_l = [(0.75, 0, 0), (0, 0, 0.5), (1, 0.75, 0.75), (0.75, 0.75, 1)]
+            gap_gene_s_l = ['Gt', 'Hb', 'Kr', 'Kni']
+            if any([True for s in gap_gene_s_l if s in case_t[5]]):
+                col = color_l[2] if pca_std[1] < 0.05 else color_l[3]
+            else:
+                col = color_l[0] if pca_std[1] < 0.05 else color_l[1]
+        else:
+            col = 'r' if pca_std[1] < 0.05 else 'b'
+        ax.errorbar(sigma_l, r_sq, yerr=r_ci, marker='o', ms=np.sqrt(s_size),
+	                   alpha=line_alpha, c=col, elinewidth=line_width)
         if not label_flag:
             continue
         if case_t[5] in tag_below_l:
@@ -93,18 +113,36 @@ def make_summary_plot(res, plot_name, min_sample_size=12, label_flag=True, title
         else:
             x_sign = -1
             ha = 'right'
-        plt.annotate(case_t[5], xy = (100*sigma_l, r_sq),
+        ax.annotate(case_t[5], xy = (sigma_l, r_sq),
                      xytext = (x_sign*20, y_sign*20),
-				  textcoords = 'offset points', ha = ha, va = va,
-				  bbox = dict(boxstyle = 'round,pad=0.5',
+			    textcoords = 'offset points', ha = ha, va = va,
+			    bbox = dict(boxstyle = 'round,pad=0.5',
                                  fc = 'yellow', alpha = 0.2),
-				  arrowprops = dict(arrowstyle = '->',
+			    arrowprops = dict(arrowstyle = '->',
                                        connectionstyle = 'arc3,rad=0', ec='0.1'))
-    plt.title(title_s)
-    plt.ylabel('R-squared')
-    plt.xlabel('sigma_L (% egg length)')
-    plt.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
-                                                         plot_name)))
+    ax.set_title(title_s)
+    ax.set_ylabel(r'$R^2$')
+    ax.set_xlabel(r'$\sigma_L / {\langle L \rangle}$')
+    if type_by_color_flag:
+        legend_handle_l = []
+        legend_s_l = ['Bcd (rejection)', 'Bcd (no rejection)',
+                      'Gap genes (rejection)', 'Gap genes (no rejection)']
+        for i, entry_s in enumerate(legend_s_l):
+            handle = plt.errorbar(-1, -1, 0,
+                                  alpha=line_alpha,
+                                  color=color_l[i],
+                                  elinewidth=line_width,
+                                  marker='o')
+            legend_handle_l.append(handle)
+        plt.legend(legend_handle_l, legend_s_l,
+                   fontsize=10,
+                   frameon=False)
+
+    if xlim_t:
+        ax.set_xlim(xlim_t)
+    if ylim_t:
+        ax.set_ylim(ylim_t)
+    return fig, ax
 
 
 
@@ -157,10 +195,27 @@ if __name__ == '__main__':
     pca_results_selected = [case_t for i, case_t in enumerate(pca_results_selected)
                    if 'ven' not in case_t[5]]
 
-    # Create plot of R^2 vs. sigma_L
-    make_summary_plot(pca_results_selected,
-                      plot_name='r_sq_vs_sigma_l__selected.pdf',
-                      title_s='Summary of dorsal/symmetric Bcd and selected LE&SE and mutant gap gene data')
+    # Create plot of R^2 vs. sigma_L (with labels)
+    plot_name='r_sq_vs_sigma_l__selected.pdf'
+    (fig, __) = make_summary_plot(pca_results_selected,
+                                  title_s='Summary of dorsal/symmetric Bcd and selected LE&SE and mutant gap gene data')
+    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+                                                         plot_name + '.pdf')))
+
+    # Create plot of R^2 vs. sigma_L (presentation version)
+    presentation_kwargs_d = {'label_flag': False,
+                             'title_s': '',
+                             'type_by_color_flag': True,
+                             'xlim_t': (0.02, 0.09),
+                             'ylim_t': (0, 1)}
+    plot_name = 'r_sq_vs_sigma_l__selected__presentation'
+    (fig, ax) = make_summary_plot(pca_results_selected,
+                                  **presentation_kwargs_d)
+    ax.add_patch(patches.Rectangle((0.08, 0), 0.005, 0.8, alpha=0.33, color=(1,1,0)))
+    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+                                                         plot_name + '.pdf')))
+    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+                                                         plot_name + '.png')))
 
 
     ## Plot all datasets (cases)
@@ -174,7 +229,9 @@ if __name__ == '__main__':
     pca_results = pca_bcd + pca_wt_gap + pca_mutant_all
 
     # Create plot of R^2 vs. sigma_L
-    make_summary_plot(pca_results,
-                      label_flag=False,
-                      plot_name='r_sq_vs_sigma_l__all.pdf',
-                      title_s='Summary of all Bcd and LE&SE and mutant gap gene data')
+    plot_name = 'r_sq_vs_sigma_l__all'
+    (fig, __) = make_summary_plot(pca_results,
+                                  label_flag=False,
+                                  title_s='Summary of all Bcd and LE&SE and mutant gap gene data')
+    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+                                                         plot_name + '.pdf')))
