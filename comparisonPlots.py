@@ -163,15 +163,17 @@ if __name__ == '__main__':
 
     # Filter all but select LE&SE gap gene data
     pca_wt_gap_selected = []
-    wt_gap_selected_l = ['LEandSE0_Gt_Dorsal_late', 'LEandSE0_Hb_Dorsal_late',
+    wt_gap_selected_l = ['LEandSE0_Gt_Dorsal_early', 'LEandSE0_Hb_Dorsal_early',
+                         'LEandSE0_Kni_Dorsal_early', 'LEandSE0_Kr_Dorsal_early',
+                         'LEandSE0_Gt_Dorsal_late', 'LEandSE0_Hb_Dorsal_late',
                          'LEandSE0_Kni_Dorsal_late', 'LEandSE0_Kr_Dorsal_late']
     for case_t in pca_wt_gap_a:
         case_name = case_t[5]
         if case_name not in wt_gap_selected_l:
             continue
-        __, gene_name, __, __ = case_name.split('_')
+        __, gene_name, __, stage_s = case_name.split('_')
         case_l = list(case_t)
-        case_l[5] = gene_name + '_LE&SE'
+        case_l[5] = 'LE&SE_' + gene_name + '_' + stage_s
         pca_wt_gap_selected.append(tuple(case_l))
 
     # Filter all but select mutants
@@ -182,11 +184,11 @@ if __name__ == '__main__':
         if mutant_name not in mutants:
             continue
         for case_t in pca_mutant_d[key]:
-            gene_name, __, stage = case_t[5].split(' ')
-            if stage == 'early':
-                continue
+            gene_name, __, stage_s = case_t[5].split(' ')
+#            if stage_s == 'early':
+#                continue
             case_l = list(case_t)
-            case_l[5] = gene_name + '_' + mutant_name
+            case_l[5] = mutant_name + '_' + gene_name + '_' + stage_s
             pca_mutant_selected.append(tuple(case_l))
 
     pca_results_selected = pca_bcd + pca_wt_gap_selected + pca_mutant_selected
@@ -196,7 +198,7 @@ if __name__ == '__main__':
                    if 'ven' not in case_t[5]]
 
     # Create plot of R^2 vs. sigma_L (with labels)
-    plot_name='r_sq_vs_sigma_l__selected.pdf'
+    plot_name='r_sq_vs_sigma_l__selected'
     (fig, __) = make_summary_plot(pca_results_selected,
                                   title_s='Summary of dorsal/symmetric Bcd and selected LE&SE and mutant gap gene data')
     fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
@@ -211,7 +213,7 @@ if __name__ == '__main__':
     plot_name = 'r_sq_vs_sigma_l__selected__presentation'
     (fig, ax) = make_summary_plot(pca_results_selected,
                                   **presentation_kwargs_d)
-    ax.add_patch(patches.Rectangle((0.08, 0), 0.005, 0.8, alpha=0.33, color=(1,1,0)))
+    ax.add_patch(patches.Rectangle((0.0707, 0), 0.013, 0.8, alpha=0.4, color=(1,1,0)))
     fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
                                                          plot_name + '.pdf')))
     fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
