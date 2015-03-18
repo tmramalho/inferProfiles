@@ -178,7 +178,7 @@ if __name__ == '__main__':
 
     # Filter all but select mutants
     pca_mutant_selected = []
-    mutants = ['etsl', 'Bcd2X', 'bcdE1']
+    mutants = ['bcdE1']
     for i, key in enumerate(pca_mutant_d.keys()):
         mutant_name = scalingMutantAll.trim_name(pca_mutant_d[key][0][5])[4:]
         if mutant_name not in mutants:
