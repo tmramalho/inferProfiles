@@ -163,7 +163,8 @@ if __name__ == '__main__':
 
     # Filter all but select LE&SE gap gene data
     pca_wt_gap_selected = []
-    wt_gap_selected_l = ['LEandSE0_Gt_Dorsal_early', 'LEandSE0_Hb_Dorsal_early',
+    wt_gap_selected_l = ['LEandSE1_Bcd_Dorsal_early', 'LEandSE1_Bcd_Dorsal_early',
+                         'LEandSE0_Gt_Dorsal_early', 'LEandSE0_Hb_Dorsal_early',
                          'LEandSE0_Kni_Dorsal_early', 'LEandSE0_Kr_Dorsal_early',
                          'LEandSE0_Gt_Dorsal_late', 'LEandSE0_Hb_Dorsal_late',
                          'LEandSE0_Kni_Dorsal_late', 'LEandSE0_Kr_Dorsal_late']
