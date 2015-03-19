@@ -19,7 +19,7 @@ Underscores indicate chaining: for instance, "foo_t_t" is a tuple of tuples
 
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib import patches
+#from matplotlib import patches
 import os
 
 import config
@@ -30,11 +30,13 @@ reload(scalingMutantAll)
 
 
 def make_summary_plot(res,
+                      figure_size=(8, 6),
                       label_flag=True,
                       min_sample_size=12,
                       title_s='',
                       type_by_color_flag=False,
                       xlim_t=(),
+                      yaxis_s='r-squared',
                       ylim_t=()):
     """ From scalingBcdFinalReally.make_summary_plot.
     - res is a list of results from do_pca_analysis, in scalingBcdFinalReally
@@ -70,7 +72,7 @@ def make_summary_plot(res,
     line_alpha = 0.5 if label_flag else 1
     line_width = None if label_flag else 2
 
-    fig = plt.figure(figsize=(8, 6))
+    fig = plt.figure(figsize=figure_size)
     plt.rcParams['font.family'] = 'Arial'
     ax = plt.subplot(1, 1, 1)
     for i, case_t in enumerate(res):
@@ -80,8 +82,11 @@ def make_summary_plot(res,
         p2 = np.mean(case_t[3])
         samples = case_t[2*np.argmin([p1,p2])+1]
         pca_std = [np.percentile(samples, 2.5), np.percentile(samples, 97.5)]
+        p = samples[0]
+        p_ci = [[p-pca_std[0]],
+                [pca_std[1]-p]]
         r_samples = np.power(case_t[2*np.argmin([p1,p2])], 2)
-        r_sq = np.mean(r_samples)
+        r_sq = r_samples[0]
         r_ci = [[r_sq-np.percentile(r_samples, 2.5)],
                 [np.percentile(r_samples, 97.5)-r_sq]]
         s_size = case_t[4]
@@ -97,7 +102,13 @@ def make_summary_plot(res,
                 col = color_l[0] if pca_std[1] < 0.05 else color_l[1]
         else:
             col = 'r' if pca_std[1] < 0.05 else 'b'
-        ax.errorbar(sigma_l, r_sq, yerr=r_ci, marker='o', ms=np.sqrt(s_size),
+        if yaxis_s == 'r-squared':
+            y = r_sq
+            y_ci = r_ci
+        elif yaxis_s == 'p-value':
+            y = p
+            y_ci = p_ci
+        ax.errorbar(sigma_l, y, yerr=y_ci, marker='.', ms=np.sqrt(s_size),
 	                   alpha=line_alpha, c=col, elinewidth=line_width)
         if not label_flag:
             continue
@@ -113,16 +124,22 @@ def make_summary_plot(res,
         else:
             x_sign = -1
             ha = 'right'
-        ax.annotate(case_t[5], xy = (sigma_l, r_sq),
+        ax.annotate(case_t[5], xy = (sigma_l, y),
                      xytext = (x_sign*20, y_sign*20),
 			    textcoords = 'offset points', ha = ha, va = va,
 			    bbox = dict(boxstyle = 'round,pad=0.5',
-                                 fc = 'yellow', alpha = 0.2),
+                                 edgecolor = 'none',
+                                 fc = col, alpha = 0.2),
 			    arrowprops = dict(arrowstyle = '->',
                                        connectionstyle = 'arc3,rad=0', ec='0.1'))
     ax.set_title(title_s)
-    ax.set_ylabel(r'$R^2$')
     ax.set_xlabel(r'$\sigma_L / {\langle L \rangle}$')
+    if yaxis_s == 'r-squared':
+        ax.set_ylabel(r'$R^2$')
+    elif yaxis_s == 'p-value':
+        ax.axhline(0.05, color='k', linewidth=0.5)
+        ax.set_ylabel(r'$p$-value')
+        ax.set_yscale('log')
     if type_by_color_flag:
         legend_handle_l = []
         legend_s_l = ['Bcd (rejection)', 'Bcd (no rejection)',
@@ -161,13 +178,17 @@ if __name__ == '__main__':
 
     ## Only plot selected datasets (cases)
 
-    # Filter all but select LE&SE gap gene data
+    # Of the LE&SE data, select the gap genes and Bcd
     pca_wt_gap_selected = []
-    wt_gap_selected_l = ['LEandSE1_Bcd_Dorsal_early', 'LEandSE1_Bcd_Dorsal_early',
+    wt_gap_selected_l = ['LEandSE1_Bcd_Dorsal_early',
                          'LEandSE0_Gt_Dorsal_early', 'LEandSE0_Hb_Dorsal_early',
                          'LEandSE0_Kni_Dorsal_early', 'LEandSE0_Kr_Dorsal_early',
+                         'LEandSE1_Bcd_Dorsal_late',
                          'LEandSE0_Gt_Dorsal_late', 'LEandSE0_Hb_Dorsal_late',
-                         'LEandSE0_Kni_Dorsal_late', 'LEandSE0_Kr_Dorsal_late']
+                         'LEandSE0_Kni_Dorsal_late', 'LEandSE0_Kr_Dorsal_late',
+                         'LEandSE1_Bcd_Dorsal_nc14',
+                         'LEandSE0_Gt_Dorsal_nc14', 'LEandSE0_Hb_Dorsal_nc14',
+                         'LEandSE0_Kni_Dorsal_nc14', 'LEandSE0_Kr_Dorsal_nc14']
     for case_t in pca_wt_gap_a:
         case_name = case_t[5]
         if case_name not in wt_gap_selected_l:
@@ -177,9 +198,9 @@ if __name__ == '__main__':
         case_l[5] = 'LE&SE_' + gene_name + '_' + stage_s
         pca_wt_gap_selected.append(tuple(case_l))
 
-    # Filter all but select mutants
+    # Filter out all mutants and keep WT
     pca_mutant_selected = []
-    mutants = ['bcdE1']
+    mutants = ['Bcd2X']
     for i, key in enumerate(pca_mutant_d.keys()):
         mutant_name = scalingMutantAll.trim_name(pca_mutant_d[key][0][5])[4:]
         if mutant_name not in mutants:
@@ -201,7 +222,17 @@ if __name__ == '__main__':
     # Create plot of R^2 vs. sigma_L (with labels)
     plot_name='r_sq_vs_sigma_l__selected'
     (fig, __) = make_summary_plot(pca_results_selected,
-                                  title_s='Summary of dorsal/symmetric Bcd and selected LE&SE and mutant gap gene data')
+                                  figure_size=(24, 18),
+                                  title_s='Summary of dorsal/symmetric Bcd and gap gene data (WT and LE&SE)')
+    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+                                                         plot_name + '.pdf')))
+
+    # Create plot of p-valueR^2 vs. sigma_L (with labels)
+    plot_name='p_value_vs_sigma_l__selected'
+    (fig, __) = make_summary_plot(pca_results_selected,
+                                  figure_size=(24, 18),
+                                  title_s='Summary of dorsal/symmetric Bcd and gap gene data (WT and LE&SE)',
+                                  yaxis_s='p-value')
     fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
                                                          plot_name + '.pdf')))
 
@@ -214,7 +245,7 @@ if __name__ == '__main__':
     plot_name = 'r_sq_vs_sigma_l__selected__presentation'
     (fig, ax) = make_summary_plot(pca_results_selected,
                                   **presentation_kwargs_d)
-    ax.add_patch(patches.Rectangle((0.0707, 0), 0.013, 0.8, alpha=0.4, color=(1,1,0)))
+    #ax.add_patch(patches.Rectangle((0.0707, 0), 0.013, 0.8, alpha=0.4, color=(1,1,0)))
     fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
                                                          plot_name + '.pdf')))
     fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
