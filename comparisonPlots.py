@@ -29,8 +29,10 @@ reload(scalingMutantAll)
 
 
 
-def make_summary_plot(res,
-                      figure_size=(8, 6),
+def make_summary_plot(ax,
+                      res,
+                      clean_label_d={},
+                      clean_label_flag=False,
                       label_flag=True,
                       min_sample_size=12,
                       title_s='',
@@ -49,6 +51,8 @@ def make_summary_plot(res,
             4 Number of embryos
             5 Name of data set
             6 Standard deviation of embryo lengths
+    - If clean_label_flag, plot small labels to the side according to the
+        dictionary clean_label_d.
     """
 
     tag_below_l = ['Hb_Bcd2x',
@@ -72,9 +76,7 @@ def make_summary_plot(res,
     line_alpha = 0.5 if label_flag else 1
     line_width = None if label_flag else 2
 
-    fig = plt.figure(figsize=figure_size)
     plt.rcParams['font.family'] = 'Arial'
-    ax = plt.subplot(1, 1, 1)
     for i, case_t in enumerate(res):
         if case_t[4] < min_sample_size:
             continue
@@ -124,20 +126,25 @@ def make_summary_plot(res,
         else:
             x_sign = -1
             ha = 'right'
-        ax.annotate(case_t[5], xy = (sigma_l, y),
-                     xytext = (x_sign*20, y_sign*20),
-			    textcoords = 'offset points', ha = ha, va = va,
-			    bbox = dict(boxstyle = 'round,pad=0.5',
-                                 edgecolor = 'none',
-                                 fc = col, alpha = 0.2),
-			    arrowprops = dict(arrowstyle = '->',
-                                       connectionstyle = 'arc3,rad=0', ec='0.1'))
+        if clean_label_flag:
+            if case_t[5] in clean_label_d:
+                ax.annotate(clean_label_d[case_t[5]], xy = (sigma_l, y),
+                            xytext = (20, 0), textcoords = 'offset points')
+        else:
+            ax.annotate(case_t[5], xy = (sigma_l, y),
+                         xytext = (x_sign*20, y_sign*20),
+    			    textcoords = 'offset points', ha = ha, va = va,
+    			    bbox = dict(boxstyle = 'round,pad=0.5',
+                                     edgecolor = 'none',
+                                     fc = col, alpha = 0.2),
+    			    arrowprops = dict(arrowstyle = '->',
+                                           connectionstyle = 'arc3,rad=0', ec='0.1'))
     ax.set_title(title_s)
     ax.set_xlabel(r'$\sigma_L / {\langle L \rangle}$')
     if yaxis_s == 'r-squared':
         ax.set_ylabel(r'$R^2$')
     elif yaxis_s == 'p-value':
-        ax.axhline(0.05, color='k', linewidth=0.5)
+        ax.axhline(0.05, color=(0.5,0.5,0.5), linewidth=0.5)
         ax.set_ylabel(r'$p$-value')
         ax.set_yscale('log')
     if type_by_color_flag:
@@ -159,7 +166,58 @@ def make_summary_plot(res,
         ax.set_xlim(xlim_t)
     if ylim_t:
         ax.set_ylim(ylim_t)
-    return fig, ax
+    return ax
+
+
+
+def make_presentation_plot_v2(pca_bcd_gfp_l, pca_lese_l, pca_mutant_d):
+
+
+    ## Create figure for panels 1 and 2: Bcd-GFP and WT-length-distribution gap genes
+
+    fig = plt.figure(figsize=(8, 12))
+    plot_name = 'presentation_plot__1and2'
+
+    # Figure 1: Bcd-GFP
+    ax = fig.add_subplot(2, 1, 1)
+    pca_bcd_gfp_selected_l = [case for case in pca_bcd_gfp_l
+                              if (case[5] == 'scaling_large' or 'ind' in case[5])]
+    clean_label_d = {'scaling_large': '(all Bcd-GFP data)'}
+    make_summary_plot(ax,
+                      pca_bcd_gfp_selected_l,
+                      clean_label_d=clean_label_d,
+                      clean_label_flag=True,
+                      yaxis_s='p-value')
+
+    # Figure 2: WT-length-distribution gap genes
+    ax = fig.add_subplot(2, 1, 2)
+    pca_mutant_selected_l = []
+    for key in pca_mutant_d:
+        if 'Bcd2X' in pca_mutant_d[key][0][5]:
+            pca_mutant_selected_l += pca_mutant_d[key]
+    clean_label_d = {'Gt data_dorsal_130310_Kni_Kr_Gt_Hb_Bcd2X_AP early': 'Gt early',
+                     'Hb data_dorsal_130310_Kni_Kr_Gt_Hb_Bcd2X_AP early': 'Hb early',
+                     'Kni data_dorsal_130310_Kni_Kr_Gt_Hb_Bcd2X_AP early': 'Kni early',
+                     'Kr data_dorsal_130310_Kni_Kr_Gt_Hb_Bcd2X_AP early': 'Kr early',
+                     'Gt data_dorsal_130310_Kni_Kr_Gt_Hb_Bcd2X_AP late': 'Gt late',
+                     'Hb data_dorsal_130310_Kni_Kr_Gt_Hb_Bcd2X_AP late': 'Hb late',
+                     'Kni data_dorsal_130310_Kni_Kr_Gt_Hb_Bcd2X_AP late': 'Kni late',
+                     'Kr data_dorsal_130310_Kni_Kr_Gt_Hb_Bcd2X_AP late': 'Kr late'}
+    make_summary_plot(ax,
+                      pca_mutant_selected_l,
+                      clean_label_d=clean_label_d,
+                      clean_label_flag=True,
+                      yaxis_s='p-value')
+
+    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+                                                         plot_name + '.pdf')))
+
+
+    ## Panel 3: LE&SE Bcd and gap genes
+
+    # Create figure for panel 3
+
+    # {{{}}}
 
 
 
@@ -168,7 +226,8 @@ if __name__ == '__main__':
     - make_summary_plot: we're only passing late-stage embryos to it for clarity.
     """
 
-    # Import data
+    ## Import data
+
     (pca_bcd_a, __) = np.load(os.path.join(config.tmp_path, 'results.npy'))
     pca_bcd = list(pca_bcd_a)
     (pca_wt_gap_a, __) = np.load(os.path.join(config.tmp_path, 'wt_gap.npy'))
@@ -176,96 +235,107 @@ if __name__ == '__main__':
     (pca_mutant_d, __) = np.load(os.path.join(config.tmp_path, 'mutant_all_res.npy'))
 
 
-    ## Only plot selected datasets (cases)
+#    ## Only plot selected datasets (cases)
+#
+#    # Of the LE&SE data, select the gap genes and Bcd
+#    pca_wt_gap_selected = []
+#    wt_gap_selected_l = ['LEandSE1_Bcd_Dorsal_early',
+#                         'LEandSE0_Gt_Dorsal_early', 'LEandSE0_Hb_Dorsal_early',
+#                         'LEandSE0_Kni_Dorsal_early', 'LEandSE0_Kr_Dorsal_early',
+#                         'LEandSE1_Bcd_Dorsal_late',
+#                         'LEandSE0_Gt_Dorsal_late', 'LEandSE0_Hb_Dorsal_late',
+#                         'LEandSE0_Kni_Dorsal_late', 'LEandSE0_Kr_Dorsal_late',
+#                         'LEandSE1_Bcd_Dorsal_nc14',
+#                         'LEandSE0_Gt_Dorsal_nc14', 'LEandSE0_Hb_Dorsal_nc14',
+#                         'LEandSE0_Kni_Dorsal_nc14', 'LEandSE0_Kr_Dorsal_nc14']
+#    for case_t in pca_wt_gap_a:
+#        case_name = case_t[5]
+#        if case_name not in wt_gap_selected_l:
+#            continue
+#        __, gene_name, __, stage_s = case_name.split('_')
+#        case_l = list(case_t)
+#        case_l[5] = 'LE&SE_' + gene_name + '_' + stage_s
+#        pca_wt_gap_selected.append(tuple(case_l))
+#
+#    # Filter out all mutants and keep WT
+#    pca_mutant_selected = []
+#    mutants = ['Bcd2X']
+#    for i, key in enumerate(pca_mutant_d.keys()):
+#        mutant_name = scalingMutantAll.trim_name(pca_mutant_d[key][0][5])[4:]
+#        if mutant_name not in mutants:
+#            continue
+#        for case_t in pca_mutant_d[key]:
+#            gene_name, __, stage_s = case_t[5].split(' ')
+##            if stage_s == 'early':
+##                continue
+#            case_l = list(case_t)
+#            case_l[5] = mutant_name + '_' + gene_name + '_' + stage_s
+#            pca_mutant_selected.append(tuple(case_l))
+#
+#    pca_results_selected = pca_bcd + pca_wt_gap_selected + pca_mutant_selected
+#
+#    # Remove ventral datasets
+#    pca_results_selected = [case_t for i, case_t in enumerate(pca_results_selected)
+#                   if 'ven' not in case_t[5]]
+#
+#    # Create plot of R^2 vs. sigma_L (with labels)
+#    fig = plt.figure(figsize=(24, 18))
+#    plot_name='r_sq_vs_sigma_l__selected'
+#    make_summary_plot(fig,
+#                      pca_results_selected,
+#                      title_s='Summary of dorsal/symmetric Bcd and gap gene data (WT and LE&SE)')
+#    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+#                                                         plot_name + '.pdf')))
+#
+#    # Create plot of p-valueR^2 vs. sigma_L (with labels)
+#    fig = plt.figure(figsize=(24, 18))
+#    plot_name='p_value_vs_sigma_l__selected'
+#    make_summary_plot(fig,
+#                      pca_results_selected,
+#                      figure_size=(24, 18),
+#                      title_s='Summary of dorsal/symmetric Bcd and gap gene data (WT and LE&SE)',
+#                                  yaxis_s='p-value')
+#    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+#                                                         plot_name + '.pdf')))
+#
+#    # Create plot of R^2 vs. sigma_L (presentation version 1)
+#    fig = plt.figure()
+#    presentation_kwargs_d = {'label_flag': False,
+#                             'title_s': '',
+#                             'type_by_color_flag': True,
+#                             'xlim_t': (0.02, 0.09),
+#                             'ylim_t': (0, 1)}
+#    plot_name = 'r_sq_vs_sigma_l__selected__presentation_v1'
+#    ax = make_summary_plot(fig,
+#                           pca_results_selected,
+#                           **presentation_kwargs_d)
+#    #ax.add_patch(patches.Rectangle((0.0707, 0), 0.013, 0.8, alpha=0.4, color=(1,1,0)))
+#    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+#                                                         plot_name + '.pdf')))
+#    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+#                                                         plot_name + '.png')))
+#
+#
+#    ## Plot all datasets (cases)
+#
+#    # Keep all mutants
+#    pca_mutant_all = []
+#    for i, key in enumerate(pca_mutant_d.keys()):
+#        for case_t in pca_mutant_d[key]:
+#            pca_mutant_all.append(case_t)
+#
+#    pca_results = pca_bcd + pca_wt_gap + pca_mutant_all
+#
+#    # Create plot of R^2 vs. sigma_L
+#    fig = plt.figure()
+#    plot_name = 'r_sq_vs_sigma_l__all'
+#    make_summary_plot(fig,
+#                      pca_results,
+#                      label_flag=False,
+#                      title_s='Summary of all Bcd and LE&SE and mutant gap gene data')
+#    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+#                                                         plot_name + '.pdf')))
 
-    # Of the LE&SE data, select the gap genes and Bcd
-    pca_wt_gap_selected = []
-    wt_gap_selected_l = ['LEandSE1_Bcd_Dorsal_early',
-                         'LEandSE0_Gt_Dorsal_early', 'LEandSE0_Hb_Dorsal_early',
-                         'LEandSE0_Kni_Dorsal_early', 'LEandSE0_Kr_Dorsal_early',
-                         'LEandSE1_Bcd_Dorsal_late',
-                         'LEandSE0_Gt_Dorsal_late', 'LEandSE0_Hb_Dorsal_late',
-                         'LEandSE0_Kni_Dorsal_late', 'LEandSE0_Kr_Dorsal_late',
-                         'LEandSE1_Bcd_Dorsal_nc14',
-                         'LEandSE0_Gt_Dorsal_nc14', 'LEandSE0_Hb_Dorsal_nc14',
-                         'LEandSE0_Kni_Dorsal_nc14', 'LEandSE0_Kr_Dorsal_nc14']
-    for case_t in pca_wt_gap_a:
-        case_name = case_t[5]
-        if case_name not in wt_gap_selected_l:
-            continue
-        __, gene_name, __, stage_s = case_name.split('_')
-        case_l = list(case_t)
-        case_l[5] = 'LE&SE_' + gene_name + '_' + stage_s
-        pca_wt_gap_selected.append(tuple(case_l))
 
-    # Filter out all mutants and keep WT
-    pca_mutant_selected = []
-    mutants = ['Bcd2X']
-    for i, key in enumerate(pca_mutant_d.keys()):
-        mutant_name = scalingMutantAll.trim_name(pca_mutant_d[key][0][5])[4:]
-        if mutant_name not in mutants:
-            continue
-        for case_t in pca_mutant_d[key]:
-            gene_name, __, stage_s = case_t[5].split(' ')
-#            if stage_s == 'early':
-#                continue
-            case_l = list(case_t)
-            case_l[5] = mutant_name + '_' + gene_name + '_' + stage_s
-            pca_mutant_selected.append(tuple(case_l))
-
-    pca_results_selected = pca_bcd + pca_wt_gap_selected + pca_mutant_selected
-
-    # Remove ventral datasets
-    pca_results_selected = [case_t for i, case_t in enumerate(pca_results_selected)
-                   if 'ven' not in case_t[5]]
-
-    # Create plot of R^2 vs. sigma_L (with labels)
-    plot_name='r_sq_vs_sigma_l__selected'
-    (fig, __) = make_summary_plot(pca_results_selected,
-                                  figure_size=(24, 18),
-                                  title_s='Summary of dorsal/symmetric Bcd and gap gene data (WT and LE&SE)')
-    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
-                                                         plot_name + '.pdf')))
-
-    # Create plot of p-valueR^2 vs. sigma_L (with labels)
-    plot_name='p_value_vs_sigma_l__selected'
-    (fig, __) = make_summary_plot(pca_results_selected,
-                                  figure_size=(24, 18),
-                                  title_s='Summary of dorsal/symmetric Bcd and gap gene data (WT and LE&SE)',
-                                  yaxis_s='p-value')
-    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
-                                                         plot_name + '.pdf')))
-
-    # Create plot of R^2 vs. sigma_L (presentation version)
-    presentation_kwargs_d = {'label_flag': False,
-                             'title_s': '',
-                             'type_by_color_flag': True,
-                             'xlim_t': (0.02, 0.09),
-                             'ylim_t': (0, 1)}
-    plot_name = 'r_sq_vs_sigma_l__selected__presentation'
-    (fig, ax) = make_summary_plot(pca_results_selected,
-                                  **presentation_kwargs_d)
-    #ax.add_patch(patches.Rectangle((0.0707, 0), 0.013, 0.8, alpha=0.4, color=(1,1,0)))
-    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
-                                                         plot_name + '.pdf')))
-    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
-                                                         plot_name + '.png')))
-
-
-    ## Plot all datasets (cases)
-
-    # Keep all mutants
-    pca_mutant_all = []
-    for i, key in enumerate(pca_mutant_d.keys()):
-        for case_t in pca_mutant_d[key]:
-            pca_mutant_all.append(case_t)
-
-    pca_results = pca_bcd + pca_wt_gap + pca_mutant_all
-
-    # Create plot of R^2 vs. sigma_L
-    plot_name = 'r_sq_vs_sigma_l__all'
-    (fig, __) = make_summary_plot(pca_results,
-                                  label_flag=False,
-                                  title_s='Summary of all Bcd and LE&SE and mutant gap gene data')
-    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
-                                                         plot_name + '.pdf')))
+    ## New versions of presentation figures
+    make_presentation_plot_v2(pca_bcd, pca_wt_gap, pca_mutant_d)
