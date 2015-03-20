@@ -35,6 +35,9 @@ def make_summary_plot(ax,
                       clean_label_flag=False,
                       label_flag=True,
                       min_sample_size=12,
+                      nudge_down_s_l=[],
+                      nudge_up_s_l=[],
+                      plot_left_s_l=[],
                       title_s='',
                       type_by_color_flag=False,
                       xlim_t=(),
@@ -128,8 +131,22 @@ def make_summary_plot(ax,
             ha = 'right'
         if clean_label_flag:
             if case_t[5] in clean_label_d:
+                if clean_label_d[case_t[5]] in plot_left_s_l:
+                    xtext_sign = -1
+                    horizontalalignment = 'right'
+                else:
+                    xtext_sign = 1
+                    horizontalalignment = 'left'
+                if clean_label_d[case_t[5]] in nudge_up_s_l:
+                    y_nudge = 3
+                elif clean_label_d[case_t[5]] in nudge_down_s_l:
+                    y_nudge = -3
+                else:
+                    y_nudge = 0
                 ax.annotate(clean_label_d[case_t[5]], xy = (sigma_l, y),
-                            xytext = (20, 0), textcoords = 'offset points')
+                            xytext = (xtext_sign*6, -4+y_nudge),
+                            textcoords = 'offset points',
+                            horizontalalignment=horizontalalignment)
         else:
             ax.annotate(case_t[5], xy = (sigma_l, y),
                          xytext = (x_sign*20, y_sign*20),
@@ -144,7 +161,7 @@ def make_summary_plot(ax,
     if yaxis_s == 'r-squared':
         ax.set_ylabel(r'$R^2$')
     elif yaxis_s == 'p-value':
-        ax.axhline(0.05, color=(0.5,0.5,0.5), linewidth=0.5)
+        ax.axhline(0.05, color='g', linewidth=0.5)
         ax.set_ylabel(r'$p$-value')
         ax.set_yscale('log')
     if type_by_color_flag:
@@ -175,11 +192,14 @@ def make_presentation_plot_v2(pca_bcd_gfp_l, pca_lese_l, pca_mutant_d):
 
     ## Create figure for panels 1 and 2: Bcd-GFP and WT-length-distribution gap genes
 
-    fig = plt.figure(figsize=(8, 12))
-    plot_name = 'presentation_plot__1and2'
+    fig = plt.figure(figsize=(6, 9))
+    plot_name = 'PCA_WTEggLengthDistribution'
+    width = 0.75
+    height = 0.375
+    space = 0.11
 
     # Figure 1: Bcd-GFP
-    ax = fig.add_subplot(2, 1, 1)
+    ax = fig.add_axes([(1-width)/2.0, (1+space)/2.0, width, height])
     pca_bcd_gfp_selected_l = [case for case in pca_bcd_gfp_l
                               if (case[5] == 'scaling_large' or 'ind' in case[5])]
     clean_label_d = {'scaling_large': '(all Bcd-GFP data)'}
@@ -187,10 +207,12 @@ def make_presentation_plot_v2(pca_bcd_gfp_l, pca_lese_l, pca_mutant_d):
                       pca_bcd_gfp_selected_l,
                       clean_label_d=clean_label_d,
                       clean_label_flag=True,
+                      title_s='Individual sessions of Bcd-GFP embryos',
+                      xlim_t=(0.023, 0.056),
                       yaxis_s='p-value')
 
     # Figure 2: WT-length-distribution gap genes
-    ax = fig.add_subplot(2, 1, 2)
+    ax = fig.add_axes([(1-width)/2.0, (1-2*height-space)/2.0, width, height])
     pca_mutant_selected_l = []
     for key in pca_mutant_d:
         if 'Bcd2X' in pca_mutant_d[key][0][5]:
@@ -207,17 +229,61 @@ def make_presentation_plot_v2(pca_bcd_gfp_l, pca_lese_l, pca_mutant_d):
                       pca_mutant_selected_l,
                       clean_label_d=clean_label_d,
                       clean_label_flag=True,
+                      nudge_down_s_l=['Gt early'],
+                      nudge_up_s_l=['Hb early', 'Hb late'],
+                      plot_left_s_l=['Kni late', 'Kni early'],
+                      title_s='Staining for gap genes in wild-type embryos',
+                      xlim_t=(0.023, 0.056),
                       yaxis_s='p-value')
 
     fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
                                                          plot_name + '.pdf')))
 
 
-    ## Panel 3: LE&SE Bcd and gap genes
+    ## Create figure for panel 3: LE&SE Bcd and gap genes
 
-    # Create figure for panel 3
+    fig = plt.figure(figsize=(8, 6))
+    plot_name = 'PCA_EnlargedEggLengthDistribution'
 
-    # {{{}}}
+    # Figure 3
+    ax = fig.add_subplot(1, 1, 1)
+    pca_bcd_gfp_selected_l = [case for case in pca_bcd_gfp_l
+                              if case[5] == 'Temp_varied']
+    gene_name_l = ['LEandSE1_Bcd', 'LEandSE0_Gt',
+                   'LEandSE0_Hb', 'LEandSE0_Kr',
+                   'LEandSE0_Kni']
+    pca_lese_selected_l = [case for case in pca_lese_l
+                           if np.any([gene_name in case[5] for gene_name in gene_name_l])]
+    pca_all_l = pca_bcd_gfp_selected_l + pca_lese_selected_l
+    clean_label_d = {'Temp_varied': '(Bcd-GFP, temperature-varied)',
+                     'LEandSE1_Bcd_Dorsal_early': 'Bcd early',
+                     'LEandSE0_Gt_Dorsal_early': 'Gt early',
+                     'LEandSE0_Hb_Dorsal_early': 'Hb early',
+                     'LEandSE0_Kni_Dorsal_early': 'Kni early',
+                     'LEandSE0_Kr_Dorsal_early': 'Kr early',
+                     'LEandSE1_Bcd_Dorsal_late': 'Bcd late',
+                     'LEandSE0_Gt_Dorsal_late': 'Gt late',
+                     'LEandSE0_Hb_Dorsal_late': 'Hb late',
+                     'LEandSE0_Kni_Dorsal_late': 'Kni late',
+                     'LEandSE0_Kr_Dorsal_late': 'Kr late',
+                     'LEandSE1_Bcd_Dorsal_nc14': 'Bcd nc14',
+                     'LEandSE0_Gt_Dorsal_nc14': 'Gt nc14',
+                     'LEandSE0_Hb_Dorsal_nc14': 'Hb nc14',
+                     'LEandSE0_Kni_Dorsal_nc14': 'Kni nc14',
+                     'LEandSE0_Kr_Dorsal_nc14': 'Kr nc14'}
+    make_summary_plot(ax,
+                      pca_all_l,
+                      clean_label_d=clean_label_d,
+                      clean_label_flag=True,
+                      nudge_down_s_l=['Bcd early', 'Gt early'],
+                      nudge_up_s_l=['Kni early'],
+                      plot_left_s_l=['Bcd early'],
+                      title_s='Staining of LE&SE embryos and temperature-varied embryos',
+                      xlim_t=(0.067, 0.085),
+                      yaxis_s='p-value')
+
+    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
+                                                         plot_name + '.pdf')))
 
 
 
