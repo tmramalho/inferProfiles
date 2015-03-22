@@ -4,7 +4,8 @@ Created on Fri Mar 13 14:39:07 2015
 
 @author: Eric
 
-Create plots that compare results from the Bcd and gap-gene datasets. Currently requires scalingBicoidFinalReally and scalingMutantAll to have been run.
+Create plots that compare results from the Bcd and gap-gene datasets. Currently
+requires scalingBicoidFinalReally and scalingMutantAll to have been run.
 
 Suffixes at the end of variable names (Eric's convention):
 a: numpy array
@@ -114,7 +115,7 @@ def make_summary_plot(ax,
             y = p
             y_ci = p_ci
         ax.errorbar(sigma_l, y, yerr=y_ci, marker='.', ms=np.sqrt(s_size),
-	                   alpha=line_alpha, c=col, elinewidth=line_width)
+	                   alpha=line_alpha, color=col, elinewidth=line_width)
         if not label_flag:
             continue
         if case_t[5] in tag_below_l:
@@ -197,6 +198,8 @@ def make_presentation_plot_v2(pca_bcd_gfp_l, pca_lese_l, pca_mutant_d):
     width = 0.75
     height = 0.375
     space = 0.11
+    letter_position_t = (-0.15, 1.05)
+    letter_size = 24
 
     # Figure 1: Bcd-GFP
     ax = fig.add_axes([(1-width)/2.0, (1+space)/2.0, width, height])
@@ -210,6 +213,11 @@ def make_presentation_plot_v2(pca_bcd_gfp_l, pca_lese_l, pca_mutant_d):
                       title_s='Individual sessions of Bcd-GFP embryos',
                       xlim_t=(0.023, 0.056),
                       yaxis_s='p-value')
+    ax.annotate('A', xy=(0,0), xycoords='axes fraction',
+                xytext=letter_position_t, textcoords='axes fraction',
+                fontsize=letter_size,
+                horizontalalignment='left',
+                verticalalignment='bottom')
 
     # Figure 2: WT-length-distribution gap genes
     ax = fig.add_axes([(1-width)/2.0, (1-2*height-space)/2.0, width, height])
@@ -235,6 +243,12 @@ def make_presentation_plot_v2(pca_bcd_gfp_l, pca_lese_l, pca_mutant_d):
                       title_s='Staining for gap genes in wild-type embryos',
                       xlim_t=(0.023, 0.056),
                       yaxis_s='p-value')
+    ax.annotate('B', xy=(0,0), xycoords='axes fraction',
+                xytext=letter_position_t, textcoords='axes fraction',
+                fontsize=letter_size,
+                horizontalalignment='left',
+                verticalalignment='bottom')
+
 
     fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
                                                          plot_name + '.pdf')))
@@ -349,7 +363,8 @@ if __name__ == '__main__':
 #    plot_name='r_sq_vs_sigma_l__selected'
 #    make_summary_plot(fig,
 #                      pca_results_selected,
-#                      title_s='Summary of dorsal/symmetric Bcd and gap gene data (WT and LE&SE)')
+#                      title_s='Summary of dorsal/symmetric Bcd and gap gene ' +
+#                              'data (WT and LE&SE)')
 #    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
 #                                                         plot_name + '.pdf')))
 #
@@ -359,7 +374,8 @@ if __name__ == '__main__':
 #    make_summary_plot(fig,
 #                      pca_results_selected,
 #                      figure_size=(24, 18),
-#                      title_s='Summary of dorsal/symmetric Bcd and gap gene data (WT and LE&SE)',
+#                      title_s='Summary of dorsal/symmetric Bcd and gap gene ' +
+#                              'data (WT and LE&SE)',
 #                                  yaxis_s='p-value')
 #    fig.savefig(scalingMutantAll.ensure_dir(os.path.join(config.plots_path, 'summary',
 #                                                         plot_name + '.pdf')))
