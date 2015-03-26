@@ -199,6 +199,7 @@ def do_ks_analysis(profiles, lens, name='', plot=False):
 	return pv
 
 def make_summary_plot(res, ks_res, min_sample_size=11):
+	plt.figure(figsize=(4,3.5))
 	for i,dataset in enumerate(res):
 		if dataset[4] > min_sample_size:
 			p1 = np.mean(dataset[1])
