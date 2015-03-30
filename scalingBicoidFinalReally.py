@@ -110,39 +110,39 @@ def plot_pca(y, pca, yp, L, name):
 	plt.clf()
 
 def do_pca_analysis(profiles, lens, name='', pca=None, plot=True, print_debug=False):
-      L = np.array(0.446*(lens-np.mean(lens)), dtype='float64')
-      pr = []
-      for i,p in enumerate(profiles):
+	L = np.array(0.446*(lens-np.mean(lens)), dtype='float64')
+	pr = []
+	for i,p in enumerate(profiles):
 		mask = np.isnan(p)
 		p[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), p[~mask])
 		av, va = moving_average(np.log(p+0.001), 46, 100)
 		pr.append(av)
-      y = np.array(pr)
-      if pca is None:
+	y = np.array(pr)
+	if pca is None:
 		pca = PCA(n_components=2)
 		pca.fit(y)
 		print pca.explained_variance_ratio_
-      yp = pca.transform(y)
-      m,b,r,p,_ = stats.linregress(L, yp[:,0])
-      p1 = [p]
-      r1 = [r]
-      for _ in xrange(1000):
+	yp = pca.transform(y)
+	m,b,r,p,_ = stats.linregress(L, yp[:,0])
+	p1 = [p]
+	r1 = [r]
+	for _ in xrange(1000):
 		sample = np.random.choice(L.shape[0], L.shape[0], replace=True)
 		m,b,r,p,_ = stats.linregress(L[~sample], yp[~sample,0])
 		p1.append(p)
 		r1.append(r)
-      m,b,r,p,_ = stats.linregress(L, yp[:,1])
-      p2 = [p]
-      r2 = [r]
-      for _ in xrange(1000):
+	m,b,r,p,_ = stats.linregress(L, yp[:,1])
+	p2 = [p]
+	r2 = [r]
+	for _ in xrange(1000):
 		sample = np.random.choice(L.shape[0], L.shape[0], replace=True)
 		m,b,r,p,_ = stats.linregress(L[~sample], yp[~sample,1])
 		p2.append(p)
 		r2.append(r)
-      if plot or name.startswith('LEandSE'):
+	if plot or name.startswith('LEandSE'):
 		plot_pca(y, pca, yp, L, name)
-      more_stats_d = {'norm_sigma_l': np.std(lens) / np.mean(lens)}
-      return pca, (r1, p1, r2, p2, L.shape[0], name, np.std(L), more_stats_d)
+	more_stats_d = {'norm_sigma_l': np.std(lens) / np.mean(lens)}
+	return pca, (r1, p1, r2, p2, L.shape[0], name, np.std(L), more_stats_d)
 
 def plot_ks_analysis(lower_y, upper_y, pval, name):
 	plt.figure(figsize=(5,10))
@@ -199,6 +199,7 @@ def do_ks_analysis(profiles, lens, name='', plot=False):
 	return pv
 
 def make_summary_plot(res, ks_res, min_sample_size=11):
+	plt.figure(figsize=(4,3.5))
 	for i,dataset in enumerate(res):
 		if dataset[4] > min_sample_size:
 			p1 = np.mean(dataset[1])
@@ -212,7 +213,7 @@ def make_summary_plot(res, ks_res, min_sample_size=11):
 			sigma_l = dataset[6]
 			col = 'r' if pca_std[1] < 0.05 else 'b'
 			plt.errorbar(sigma_l, r_sq, yerr=r_ci,marker='o', ms=np.sqrt(s_size),
-	            alpha=0.5, c=col)
+			alpha=0.5, c=col)
 			plt.annotate(dataset[5], xy = (sigma_l, r_sq), xytext = (-20, 20),
 				textcoords = 'offset points', ha = 'right', va = 'bottom',
 				bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.2),

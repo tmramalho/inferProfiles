@@ -1,1 +1,9 @@
+*.pdf
 *.pyc
+*.dat
+plots/*
+results/*
+data/*
+theory/*
+final/*
+.idea/*

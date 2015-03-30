@@ -59,47 +59,59 @@ def plot_pca(y, pca, yp, L, name):
 	plt.plot(x, yt.T, alpha=0.5)
 	plt.title('pc2')
 	plt.savefig(ensure_dir(os.path.join(config.plots_path, "full_mutant", 
-                                          "pca_{0}.pdf".format(name))))
+							"pca_{0}.pdf".format(name))))
 	plt.clf()
 
 def do_pca_analysis(profiles, lens, name='', plot=False, print_debug=False):
-      L = np.array(0.446*(lens-np.mean(lens)), dtype='float64')
-      pr = []
-      for i,p in enumerate(profiles):
+	L = np.array(0.446*(lens-np.mean(lens)), dtype='float64')
+	pr = []
+	for i,p in enumerate(profiles):
 		mask = np.isnan(p)
 		p[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), p[~mask])
 		av, va = moving_average(np.log(p+0.001), 46, 100)
 		pr.append(av)
-      y = np.array(pr)
-      pca = PCA(n_components=2)
-      pca.fit(y)
-      if print_debug:
+	y = np.array(pr)
+	pca = PCA(n_components=2)
+	pca.fit(y)
+	if print_debug:
 		print pca.explained_variance_ratio_
-      yp = pca.transform(y)
+	yp = pca.transform(y)
 	# L = L[np.where(L > -40)]
 	# yp = yp[np.where(L > -40)]
-      m,b,r,p,_ = stats.linregress(L, yp[:,0])
-      p1 = [p]
-      r1 = [r]
-      for _ in xrange(1000):
+	m,b,r,p,_ = stats.linregress(L, yp[:,0])
+	p1 = [p]
+	r1 = [r]
+	for _ in xrange(1000):
 		sample = np.random.choice(L.shape[0], L.shape[0], replace=True)
 		m,b,r,p,_ = stats.linregress(L[sample], yp[sample,0])
 		p1.append(p)
 		r1.append(r)
-      m,b,r,p,_ = stats.linregress(L, yp[:,1])
-      p2 = [p]
-      r2 = [r]
-      for _ in xrange(1000):
+	m,b,r,p,_ = stats.linregress(L, yp[:,1])
+	p2 = [p]
+	r2 = [r]
+	for _ in xrange(1000):
 		sample = np.random.choice(L.shape[0], L.shape[0], replace=True)
 		m,b,r,p,_ = stats.linregress(L[sample], yp[sample,1])
 		p2.append(p)
 		r2.append(r)
-      if plot:
+	if plot:
 		plot_pca(y, pca, yp, L, name)
-      mean_prof = np.mean(y, axis=0)
-      dr = np.max(mean_prof) - np.min(mean_prof)
-      more_stats_d = {'norm_sigma_l': np.std(lens) / np.mean(lens)}
-      return r1, p1, r2, p2, L.shape[0], name, np.std(L), dr, more_stats_d
+	mean_prof = np.mean(y, axis=0)
+	dr = np.max(mean_prof) - np.min(mean_prof)
+	more_stats_d = {'norm_sigma_l': np.std(lens) / np.mean(lens)}
+	return r1, p1, r2, p2, L.shape[0], name, np.std(L), dr, more_stats_d
+
+def extract_dynamic_range(profiles):
+	pr = []
+	for i,p in enumerate(profiles):
+		mask = np.isnan(p)
+		p[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), p[~mask])
+		av, va = moving_average(np.log(p+0.001), 46, 100)
+		pr.append(av)
+	y = np.array(pr)
+	mean_prof = np.mean(y, axis=0)
+	dr = np.max(mean_prof) - np.min(mean_prof)
+	return dr
 
 def plot_ks_analysis(lower_y, upper_y, pval, name):
 	plt.figure(figsize=(5,10))
@@ -125,7 +137,7 @@ def plot_ks_analysis(lower_y, upper_y, pval, name):
 	plt.xlabel('x/L')
 	plt.suptitle(name)
 	plt.savefig(ensure_dir(os.path.join(config.plots_path,
-                                          "full_mutant", "ks_{0}.pdf".format(name))))
+							"full_mutant", "ks_{0}.pdf".format(name))))
 	plt.clf()
 
 def do_ks_analysis(profiles, lens, name='', plot=False):
@@ -280,7 +292,7 @@ def make_summary_plot(fr, fkr):
 			dr = dataset[7]
 			col = 'r' if pca_std[1] < 0.05 else 'b'
 			plt.errorbar(dr, r_sq, yerr=r_ci,marker='o', ms=np.sqrt(s_size),
-	            alpha=0.5, c=col)
+			alpha=0.5, c=col)
 			plt.title(trim_name(dataset[5])[3:-1])
 			text_an = '{0} {1}'.format(stage, gene_name)
 			plt.annotate(text_an, xy = (dr, r_sq), xytext = (-20, 20),
@@ -291,14 +303,21 @@ def make_summary_plot(fr, fkr):
 		plt.xlabel('log (fold change)')
 	plt.tight_layout()
 	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 
-                                          'gap_bubbles.pdf')))
+							'gap_bubbles.pdf')))
 	plt.clf()
 
-def make_paper_plot(fr, fkr):
+def make_paper_plot(fr, fkr, caldr):
 	plt.figure(figsize=(6*2, 4*2))
 	mutants = ['etsl', 'Bcd2X', 'bcdE1']
 	gene_index = {'Kr': 1, 'Gt': 2, 'Kni': 3, 'Hb': 4}
 	mutant_index = {'etsl': 'o', 'Bcd2X': 'v', 'bcdE1': 's'}
+	ref_dr = []
+	for i,k in enumerate(fr.keys()):
+		mutant_name = trim_name(fr[k][0][5])[4:]
+		if mutant_name in ['Bcd2X']:
+			for n in xrange(len(fr[k])):
+				ref_dr.append(fr[k][n][7])
+
 	for i,k in enumerate(fr.keys()):
 		mutant_name = trim_name(fr[k][0][5])[4:]
 		if mutant_name in mutants:
@@ -314,12 +333,15 @@ def make_paper_plot(fr, fkr):
 				r_ci = [[r_sq-np.percentile(r_samples, 2.5)], [np.percentile(r_samples, 97.5)-r_sq]]
 				s_size = dataset[4]
 				dr = dataset[7]
+				calibration_dr = caldr[k][n]
+				corrected_dr = dr * ref_dr[n] / calibration_dr
+				corrected_dr = corrected_dr if not np.isnan(corrected_dr) else dr
 				col = 'r' if pca_std[1] < 0.05 else 'b'
 				fill = 'none' if stage == 'early' else None
 				gi = gene_index[gene_name]
 				plt.subplot(2, 2, gi)
 				text_an = '{0} {1} {2}'.format(stage, gene_name, mutant_name)
-				plt.errorbar(dr, r_sq, yerr=r_ci,marker=mutant_index[mutant_name], ms=2*np.sqrt(s_size),
+				plt.errorbar(corrected_dr, r_sq, yerr=r_ci,marker=mutant_index[mutant_name], ms=2*np.sqrt(s_size),
 					alpha=0.5, c=col, mec=col, mfc=fill, label=text_an)
 
 				# plt.annotate(text_an, xy = (dr, r_sq), xytext = (-20, 20),
@@ -333,8 +355,10 @@ def make_paper_plot(fr, fkr):
 		plt.ylabel('r_sq')
 		plt.xlabel('log (fold change)')
 	plt.tight_layout()
+	print os.path.join(config.plots_path, 'summary',
+							'paper_gap_bubbles.pdf')
 	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 
-                                          'paper_gap_bubbles.pdf')))
+							'paper_gap_bubbles.pdf')))
 	plt.clf()
 
 def make_table(fr, fkr):
@@ -430,7 +454,7 @@ def make_table(fr, fkr):
 		plt.title(mutant_name)
 		plt.tight_layout()
 		plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 
-                                               'gap{0}_table.pdf'.format(i))))
+							     'gap{0}_table.pdf'.format(i))))
 		plt.clf()
 
 		ks_ratio = np.array(ks_ratio)
@@ -446,27 +470,30 @@ def make_table(fr, fkr):
 		plt.bar(np.arange(len(sigma_l)), sigma_l, 1)
 		plt.tight_layout()
 		plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 
-                                               'gap{0}_bar.pdf'.format(i))))
+							     'gap{0}_bar.pdf'.format(i))))
 		plt.clf()
 
 if __name__ == '__main__':
 	plot_flag = False
 	res_path = os.path.join(config.tmp_path, 'mutant_all_res.npy')
 	try:
-		full_results, full_ks_results = np.load(res_path)
+		full_results, full_ks_results, full_dr_calibration = np.load(res_path)
 	except IOError:
 		print 'no results found. please wait a sec'
 		full_results = dict()
 		full_ks_results = dict()
+		full_dr_calibration = dict()
 		for csv_filename in os.listdir(os.path.join(config.mutant_path)):
 			if csv_filename.endswith(".mat"):
 				print csv_filename
 				results = []
 				ks_results = []
+				dr_calibration = []
 				gap_data = sio.loadmat(os.path.join(config.mutant_path, 
-                                                           '{0}'.format(csv_filename)),
-                                              squeeze_me=True)
+									     '{0}'.format(csv_filename)),
+							    squeeze_me=True)
 				gap_data = gap_data['data']
+				''' perform PCA and KS analysis for late profiles '''
 				pos = (gap_data['age'] >= 40) & (gap_data['age'] <= 50) & (gap_data['orient'] == 1) & (gap_data['genotype'] == 2)
 				ind = np.where(pos)[0]
 				results.append(do_pca_analysis(gap_data['Kni'][ind], gap_data['AP'][ind], 'Kni {0} late'.format(csv_filename[:-4]), plot=plot_flag))
@@ -477,6 +504,14 @@ if __name__ == '__main__':
 				ks_results.append(do_ks_analysis(gap_data['Kr'][ind], gap_data['AP'][ind], 'Kr {0} late'.format(csv_filename[:-4]), plot=plot_flag))
 				ks_results.append(do_ks_analysis(gap_data['Hb'][ind], gap_data['AP'][ind], 'Hb {0} late'.format(csv_filename[:-4]), plot=plot_flag))
 				ks_results.append(do_ks_analysis(gap_data['Gt'][ind], gap_data['AP'][ind], 'Gt {0} late'.format(csv_filename[:-4]), plot=plot_flag))
+				''' extract WT profiles dynamic range for comparison '''
+				pos = (gap_data['age'] >= 40) & (gap_data['age'] <= 50) & (gap_data['orient'] == 1) & (gap_data['genotype'] == 1)
+				ind = np.where(pos)[0]
+				dr_calibration.append(extract_dynamic_range(gap_data['Kni'][ind]))
+				dr_calibration.append(extract_dynamic_range(gap_data['Kr'][ind]))
+				dr_calibration.append(extract_dynamic_range(gap_data['Hb'][ind]))
+				dr_calibration.append(extract_dynamic_range(gap_data['Gt'][ind]))
+				''' perform PCA and KS analysis for early profiles '''
 				pos = (gap_data['age'] >= 15) & (gap_data['age'] <= 25) & (gap_data['orient'] == 1) & (gap_data['genotype'] == 2)
 				ind = np.where(pos)[0]
 				results.append(do_pca_analysis(gap_data['Kni'][ind], gap_data['AP'][ind], 'Kni {0} early'.format(csv_filename[:-4]), plot=plot_flag))
@@ -487,11 +522,19 @@ if __name__ == '__main__':
 				ks_results.append(do_ks_analysis(gap_data['Kr'][ind], gap_data['AP'][ind], 'Kr {0} early'.format(csv_filename[:-4]), plot=plot_flag))
 				ks_results.append(do_ks_analysis(gap_data['Hb'][ind], gap_data['AP'][ind], 'Hb {0} early'.format(csv_filename[:-4]), plot=plot_flag))
 				ks_results.append(do_ks_analysis(gap_data['Gt'][ind], gap_data['AP'][ind], 'Gt {0} early'.format(csv_filename[:-4]), plot=plot_flag))
+				''' extract WT profiles dynamic range for comparison '''
+				pos = (gap_data['age'] >= 15) & (gap_data['age'] <= 25) & (gap_data['orient'] == 1) & (gap_data['genotype'] == 1)
+				ind = np.where(pos)[0]
+				dr_calibration.append(extract_dynamic_range(gap_data['Kni'][ind]))
+				dr_calibration.append(extract_dynamic_range(gap_data['Kr'][ind]))
+				dr_calibration.append(extract_dynamic_range(gap_data['Hb'][ind]))
+				dr_calibration.append(extract_dynamic_range(gap_data['Gt'][ind]))
 				full_results[csv_filename] = results
 				full_ks_results[csv_filename] = ks_results
-		np.save(res_path, [full_results, full_ks_results])
+				full_dr_calibration[csv_filename] = dr_calibration
+		np.save(res_path, [full_results, full_ks_results, full_dr_calibration])
 	#summary_plot(full_results)
 	#rejection_analysis(full_results, full_ks_results)
 	#make_table(full_results, full_ks_results)
 	#make_summary_plot(full_results, full_ks_results)
-	make_paper_plot(full_results, full_ks_results)
+	make_paper_plot(full_results, full_ks_results, full_dr_calibration)
