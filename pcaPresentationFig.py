@@ -238,6 +238,7 @@ if __name__ == '__main__':
         scaling_profiles.append(scalingBicoidFinalReally.smooth_arr_prof(p))
     scaling_profiles = np.array(scaling_profiles)
     scaling_lengths = np.array(scaling_lengths)
+    print('{0} embryos'.format(scaling_lengths.shape[0]))
 
     # Run PCA analysis
     pca, res = do_pca_analysis(scaling_profiles, scaling_lengths, 'scaling_large')
