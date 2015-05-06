@@ -354,6 +354,7 @@ def make_paper_plot(fr, fkr, caldr):
 		leg.get_frame().set_alpha(0.5)
 		plt.ylabel('r_sq')
 		plt.xlabel('log (fold change)')
+		plt.xlim([0.5, 3.0])
 	plt.tight_layout()
 	print os.path.join(config.plots_path, 'summary',
 							'paper_gap_bubbles.pdf')
@@ -383,25 +384,24 @@ def make_table(fr, fkr):
 			reject_ratio1 = np.where(pv<0.01)[0].shape[0] / float(pv.shape[0])
 			p1 = np.mean(dataset[1])
 			p2 = np.mean(dataset[3])
-			p_pca = np.min([p1, p2])
-			pca_vals.append(p_pca)
-			samples = dataset[2*np.argmin([p1,p2])+1]
-			pca_std.append([np.percentile(samples, 2.5), np.percentile(samples, 97.5)])
-			r_samples = np.power(dataset[2*np.argmin([p1,p2])], 2)
-			r_sq.append(np.mean(r_samples))
-			r_ci.append([np.percentile(r_samples, 2.5), np.percentile(r_samples, 97.5)])
+			pca_vals.append([p1, p2])
+			p1v = [np.percentile(dataset[1], 2.5), np.percentile(dataset[1], 97.5)]
+			p2v = [np.percentile(dataset[3], 2.5), np.percentile(dataset[3], 97.5)]
+			pca_std.append([p1v, p2v])
+			r1 = np.mean(np.power(dataset[0],2))
+			r2 = np.mean(np.power(dataset[2],2))
+			r_sq.append([r1, r2])
+			r1v = [np.percentile(np.power(dataset[0],2), 2.5), np.percentile(np.power(dataset[0],2), 97.5)]
+			r2v = [np.percentile(np.power(dataset[2],2), 2.5), np.percentile(np.power(dataset[2],2), 97.5)]
+			r_ci.append([r1v,r2v])
 			s_size.append(dataset[4])
 			sigma_l.append(dataset[6])
-			if p_pca < 0.01 and reject_ratio1 > 0.1:
-				test_1.append(1)
-			else:
-				test_1.append(-1)
 			reject_ratio2 = np.where(pv<0.05)[0].shape[0] / float(pv.shape[0])
-			if p_pca < 0.05 and reject_ratio2 > 0.1:
-				test_2.append(1)
-			else:
-				test_2.append(-1)
 			ks_ratio.append((reject_ratio1, reject_ratio2))
+		pca_vals = np.array(pca_vals)
+		pca_std = np.array(pca_std)
+		r_sq = np.array(r_sq)
+		r_ci = np.array(r_ci)
 
 		def saturate_pvals(inp):
 			out = np.empty_like(inp)
@@ -412,13 +412,14 @@ def make_table(fr, fkr):
 		num_cols = len(labels)
 		color_data = np.vstack([
 			np.zeros((num_cols,)),
-			saturate_pvals(np.array(pca_vals)),
+			saturate_pvals(np.array(pca_vals[:,0])),
+		    saturate_pvals(np.array(pca_vals[:,1])),
 			np.zeros((num_cols,)),
 		    np.zeros((num_cols,)),
 		    np.zeros((num_cols,)),
-			test_1, test_2])
+		    np.zeros((num_cols,))])
 		num_rows = color_data.shape[0]
-		plt.figure(figsize=(14, 7))
+		plt.figure(figsize=(20, 7))
 		ax = plt.gca()
 		ax.imshow(color_data, interpolation='nearest', cmap='RdBu_r', aspect='auto', vmin=-1, vmax=1)
 
@@ -433,45 +434,49 @@ def make_table(fr, fkr):
 				tx = '{0:.02f} (1%)\n{1:.02f} (5%)'.format(ks_ratio[x_val][0], ks_ratio[x_val][1])
 				ax.text(x_val, y_val, tx, va='center', ha='center')
 			elif y_val == 1:
-				tx = '{0:.01e}\n[{1:.02e},{2:.02e}]'.format(pca_vals[x_val], pca_std[x_val][0], pca_std[x_val][1])
+				tx = '{0:.01e}\n[{1:.02e},\n{2:.02e}]'.format(pca_vals[x_val,0], pca_std[x_val,0,0], pca_std[x_val,0,1])
 				ax.text(x_val, y_val, tx, va='center', ha='center')
 			elif y_val == 2:
-				tx = '{0}'.format(s_size[x_val])
+				tx = '{0:.01e}\n[{1:.02e},\n{2:.02e}]'.format(pca_vals[x_val,1], pca_std[x_val,1,0], pca_std[x_val,1,1])
 				ax.text(x_val, y_val, tx, va='center', ha='center')
 			elif y_val == 3:
-				tx = '{0:.02f}'.format(sigma_l[x_val])
+				tx = '{0}'.format(s_size[x_val])
 				ax.text(x_val, y_val, tx, va='center', ha='center')
 			elif y_val == 4:
-				tx = '{0:.02f}\n[{1:.02f},{2:.02f}]'.format(r_sq[x_val], r_ci[x_val][0], r_ci[x_val][1])
+				tx = '{0:.02f}'.format(sigma_l[x_val])
 				ax.text(x_val, y_val, tx, va='center', ha='center')
-			else:
-				pass
+			elif y_val == 5:
+				tx = '{0:.02f}\n[{1:.02f},{2:.02f}]'.format(r_sq[x_val,0], r_ci[x_val,0,0], r_ci[x_val,0,1])
+				ax.text(x_val, y_val, tx, va='center', ha='center')
+			elif y_val == 6:
+				tx = '{0:.02f}\n[{1:.02f},{2:.02f}]'.format(r_sq[x_val,1], r_ci[x_val,1,0], r_ci[x_val,1,1])
+				ax.text(x_val, y_val, tx, va='center', ha='center')
 
 		ax.set_xticks(x_array+0.5)
 		ax.set_yticks(y_array+0.5)
 		ax.set_xticklabels(labels, rotation = 90)
-		ax.set_yticklabels(['ks', 'pca', 'n_samples', 'sigma_l', 'test1', 'test'])
+		ax.set_yticklabels(['ks', 'pca1', 'pca2', 'n_samples', 'sigma_l', 'r_sq1', 'r_sq2'])
 		plt.title(mutant_name)
 		plt.tight_layout()
 		plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 
 							     'gap{0}_table.pdf'.format(i))))
 		plt.clf()
 
-		ks_ratio = np.array(ks_ratio)
-		plt.figure(figsize=(4,10))
-		plt.subplot(411)
-		plt.bar(np.arange(len(pca_vals)), ks_ratio[:,0] , 0.5)
-		plt.bar(np.arange(len(pca_vals))+0.5, ks_ratio[:,1] , 0.5, color='r')
-		plt.subplot(412)
-		plt.bar(np.arange(len(pca_vals)), pca_vals, 1)
-		plt.subplot(413)
-		plt.bar(np.arange(len(s_size)), s_size, 1)
-		plt.subplot(414)
-		plt.bar(np.arange(len(sigma_l)), sigma_l, 1)
-		plt.tight_layout()
-		plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 
-							     'gap{0}_bar.pdf'.format(i))))
-		plt.clf()
+		# ks_ratio = np.array(ks_ratio)
+		# plt.figure(figsize=(4,10))
+		# plt.subplot(411)
+		# plt.bar(np.arange(len(pca_vals)), ks_ratio[:,0] , 0.5)
+		# plt.bar(np.arange(len(pca_vals))+0.5, ks_ratio[:,1] , 0.5, color='r')
+		# plt.subplot(412)
+		# plt.bar(np.arange(len(pca_vals)), pca_vals, 1)
+		# plt.subplot(413)
+		# plt.bar(np.arange(len(s_size)), s_size, 1)
+		# plt.subplot(414)
+		# plt.bar(np.arange(len(sigma_l)), sigma_l, 1)
+		# plt.tight_layout()
+		# plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary',
+		# 					     'gap{0}_bar.pdf'.format(i))))
+		# plt.clf()
 
 if __name__ == '__main__':
 	plot_flag = False
@@ -535,6 +540,6 @@ if __name__ == '__main__':
 		np.save(res_path, [full_results, full_ks_results, full_dr_calibration])
 	#summary_plot(full_results)
 	#rejection_analysis(full_results, full_ks_results)
-	#make_table(full_results, full_ks_results)
+	make_table(full_results, full_ks_results)
 	#make_summary_plot(full_results, full_ks_results)
 	make_paper_plot(full_results, full_ks_results, full_dr_calibration)

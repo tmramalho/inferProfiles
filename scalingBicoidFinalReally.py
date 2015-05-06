@@ -71,23 +71,26 @@ def smooth_arr_bg(p,t):
 
 def plot_pca(y, pca, yp, L, name):
 	lx = np.linspace(np.min(L), np.max(L), 100)
-	x = np.linspace(0,1,y.shape[1])
+	x = np.linspace(0,0.9,y.shape[1])
 	plt.subplot(231)
 	plt.scatter(yp[:,0], yp[:,1], c=L/float(np.max(L)), cmap=plt.get_cmap('jet'))
 	plt.subplot(232)
 	m,b,r,p,s = stats.linregress(L, yp[:,0])
 	plt.scatter(L, yp[:,0])
-	plt.plot(lx, m*lx+b, color='r')
+	plt.plot(lx, m*lx+b, color='k')
 	plt.fill_between(lx, (m-s)*lx+b, (m+s)*lx+b, alpha=0.3, color='r')
 	plt.title("pc1 r:{0:.2f},p:{1:.2e}".format(r,p))
 	plt.subplot(233)
 	m,b,r,p,s = stats.linregress(L, yp[:,1])
 	plt.scatter(L, yp[:,1])
-	plt.plot(lx, m*lx+b, color='r')
+	plt.plot(lx, m*lx+b, color='k')
 	plt.fill_between(lx, (m-s)*lx+b, (m+s)*lx+b, alpha=0.3, color='r')
 	plt.title("pc2 r:{0:.2f},p:{1:.2e}".format(r,p))
 	plt.subplot(234)
-	plt.plot(x, np.exp(y[:100].T), alpha=0.5)
+	jet = plt.get_cmap('jet')
+	norm = colors.Normalize(vmin=np.min(L), vmax=np.max(L))
+	for i in np.random.choice(y.shape[0], np.min([100, y.shape[0]]), replace=False):
+		plt.plot(x, np.exp(y[i]), c=jet(norm(L[i])), alpha=0.8)
 	plt.title('data')
 	plt.subplot(235)
 	try:
@@ -95,14 +98,14 @@ def plot_pca(y, pca, yp, L, name):
 		s = np.random.normal(scale=np.std(yp[:,0]), size=n_samples)
 		v = np.vstack([s, np.zeros(n_samples)]).T
 		yt = pca.inverse_transform(v)
-		plt.plot(x, np.exp(yt.T), alpha=0.5)
+		plt.plot(x, np.exp(yt.T), c='b', alpha=0.3)
 		plt.title('pc1')
 		plt.subplot(236)
 		n_samples = 50
 		s = np.random.normal(scale=np.std(yp[:,1]), size=n_samples)
 		v = np.vstack([np.zeros(n_samples), s]).T
 		yt = pca.inverse_transform(v)
-		plt.plot(x, np.exp(yt.T), alpha=0.5)
+		plt.plot(x, np.exp(yt.T), c='b', alpha=0.3)
 		plt.title('pc2')
 	except ValueError:
 		pass
@@ -143,6 +146,33 @@ def do_pca_analysis(profiles, lens, name='', pca=None, plot=True, print_debug=Fa
 		plot_pca(y, pca, yp, L, name)
 	more_stats_d = {'norm_sigma_l': np.std(lens) / np.mean(lens)}
 	return pca, (r1, p1, r2, p2, L.shape[0], name, np.std(L), more_stats_d)
+
+def plot_all_pcs(profiles):
+	pr = []
+	for i,p in enumerate(profiles):
+		mask = np.isnan(p)
+		p[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), p[~mask])
+		av, va = moving_average(np.log(p+0.001), 46, 100)
+		pr.append(av)
+	y = np.array(pr)
+	pca = PCA(n_components=6)
+	pca.fit(y)
+	yp = pca.transform(y)
+	x = np.linspace(0,0.9,y.shape[1])
+	n_samples = 50
+	plt.figure(figsize=(8, 9))
+	for i in xrange(6):
+		plt.subplot(3,2,i+1)
+		s = np.random.normal(scale=np.std(yp[:,i]), size=n_samples)
+		v = np.zeros((6, n_samples))
+		v[i] = s
+		yt = pca.inverse_transform(v.T)
+		plt.plot(x, np.exp(yt.T), c='b', alpha=0.3)
+		plt.ylabel('PC{0:d}'.format(i+1))
+		plt.xlabel('AP position (x/L)')
+	plt.tight_layout()
+	plt.savefig('plots/SI_pcgrid.pdf')
+	plt.clf()
 
 def plot_ks_analysis(lower_y, upper_y, pval, name):
 	plt.figure(figsize=(5,10))
@@ -223,6 +253,42 @@ def make_summary_plot(res, ks_res, min_sample_size=11):
 	plt.xlabel('sigma_l')
 	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 'bcd_bubbles.pdf')))
 	plt.clf()
+	plt.figure(figsize=(8,9))
+	for i,dataset in enumerate(res):
+		if dataset[4] > min_sample_size:
+			p1 = np.mean(dataset[1])
+			p2 = np.mean(dataset[3])
+			r1 = np.mean(np.power(dataset[0],2))
+			r2 = np.mean(np.power(dataset[2],2))
+			s_size = dataset[4]
+			sigma_l = dataset[6]
+			plt.subplot(3,2,1)
+			plt.scatter(s_size, p1)
+			plt.ylabel('p-value')
+			plt.xlabel('sample size')
+			plt.subplot(3,2,2)
+			plt.scatter(s_size, p2)
+			plt.ylabel('p-value')
+			plt.xlabel('sample size')
+			plt.subplot(3,2,3)
+			plt.scatter(sigma_l, p1)
+			plt.ylabel('p-value')
+			plt.xlabel('length variation')
+			plt.subplot(3,2,4)
+			plt.scatter(sigma_l, p2)
+			plt.ylabel('p-value')
+			plt.xlabel('length variation')
+			plt.subplot(3,2,5)
+			plt.scatter(r1, p1)
+			plt.ylabel('p-value')
+			plt.xlabel('r^2')
+			plt.subplot(3,2,6)
+			plt.scatter(r2, p2)
+			plt.ylabel('p-value')
+			plt.xlabel('r^2')
+	plt.tight_layout()
+	plt.savefig('plots/summary/si_params.pdf')
+	plt.clf()
 
 def make_table(res, ks_res, min_sample_size=11):
 	labels = []
@@ -231,36 +297,33 @@ def make_table(res, ks_res, min_sample_size=11):
 	pca_std = []
 	s_size = []
 	sigma_l = []
-	test_1 = []
-	test_2 = []
 	r_sq = []
 	r_ci = []
 	for i,dataset in enumerate(res):
-		if dataset[4] > min_sample_size and dataset[6]> 8:
+		if dataset[4] > min_sample_size and dataset[6]> 5:
 			labels.append(dataset[5])
 			pv = ks_res[i]
 			reject_ratio1 = np.where(pv<0.01)[0].shape[0] / float(pv.shape[0])
 			p1 = np.mean(dataset[1])
 			p2 = np.mean(dataset[3])
-			p_pca = np.min([p1, p2])
-			pca_vals.append(p_pca)
-			samples = dataset[2*np.argmin([p1,p2])+1]
-			pca_std.append([np.percentile(samples, 2.5), np.percentile(samples, 97.5)])
-			r_samples = np.power(dataset[2*np.argmin([p1,p2])], 2)
-			r_sq.append(np.mean(r_samples))
-			r_ci.append([np.percentile(r_samples, 2.5), np.percentile(r_samples, 97.5)])
+			pca_vals.append([p1, p2])
+			p1v = [np.percentile(dataset[1], 2.5), np.percentile(dataset[1], 97.5)]
+			p2v = [np.percentile(dataset[3], 2.5), np.percentile(dataset[3], 97.5)]
+			pca_std.append([p1v, p2v])
+			r1 = np.mean(np.power(dataset[0],2))
+			r2 = np.mean(np.power(dataset[2],2))
+			r_sq.append([r1, r2])
+			r1v = [np.percentile(np.power(dataset[0],2), 2.5), np.percentile(np.power(dataset[0],2), 97.5)]
+			r2v = [np.percentile(np.power(dataset[2],2), 2.5), np.percentile(np.power(dataset[2],2), 97.5)]
+			r_ci.append([r1v,r2v])
 			s_size.append(dataset[4])
 			sigma_l.append(dataset[6])
-			if p_pca < 0.01 and reject_ratio1 > 0.1:
-				test_1.append(1)
-			else:
-				test_1.append(-1)
 			reject_ratio2 = np.where(pv<0.05)[0].shape[0] / float(pv.shape[0])
-			if p_pca < 0.05 and reject_ratio2 > 0.1:
-				test_2.append(1)
-			else:
-				test_2.append(-1)
 			ks_ratio.append((reject_ratio1, reject_ratio2))
+	pca_vals = np.array(pca_vals)
+	pca_std = np.array(pca_std)
+	r_sq = np.array(r_sq)
+	r_ci = np.array(r_ci)
 
 	def saturate_pvals(inp):
 		out = np.empty_like(inp)
@@ -271,13 +334,14 @@ def make_table(res, ks_res, min_sample_size=11):
 	num_cols = len(labels)
 	color_data = np.vstack([
 		np.zeros((num_cols,)),
-		saturate_pvals(np.array(pca_vals)),
+		saturate_pvals(np.array(pca_vals[:,0])),
+	    saturate_pvals(np.array(pca_vals[:,1])),
 		np.zeros((num_cols,)),
 	    np.zeros((num_cols,)),
 	    np.zeros((num_cols,)),
-		test_1, test_2])
+	    np.zeros((num_cols,))])
 	num_rows = color_data.shape[0]
-	plt.figure(figsize=(14, 7))
+	plt.figure(figsize=(20, 7))
 	ax = plt.gca()
 	ax.imshow(color_data, interpolation='nearest', cmap='RdBu_r', aspect='auto', vmin=-1, vmax=1)
 
@@ -292,42 +356,46 @@ def make_table(res, ks_res, min_sample_size=11):
 			tx = '{0:.02f} (1%)\n{1:.02f} (5%)'.format(ks_ratio[x_val][0], ks_ratio[x_val][1])
 			ax.text(x_val, y_val, tx, va='center', ha='center')
 		elif y_val == 1:
-			tx = '{0:.01e}\n[{1:.02e},{2:.02e}]'.format(pca_vals[x_val], pca_std[x_val][0], pca_std[x_val][1])
+			tx = '{0:.01e}\n[{1:.02e},\n{2:.02e}]'.format(pca_vals[x_val,0], pca_std[x_val,0,0], pca_std[x_val,0,1])
 			ax.text(x_val, y_val, tx, va='center', ha='center')
 		elif y_val == 2:
-			tx = '{0}'.format(s_size[x_val])
+			tx = '{0:.01e}\n[{1:.02e},\n{2:.02e}]'.format(pca_vals[x_val,1], pca_std[x_val,1,0], pca_std[x_val,1,1])
 			ax.text(x_val, y_val, tx, va='center', ha='center')
 		elif y_val == 3:
-			tx = '{0:.02f}'.format(sigma_l[x_val])
+			tx = '{0}'.format(s_size[x_val])
 			ax.text(x_val, y_val, tx, va='center', ha='center')
 		elif y_val == 4:
-			tx = '{0:.02f}\n[{1:.02f},{2:.02f}]'.format(r_sq[x_val], r_ci[x_val][0], r_ci[x_val][1])
+			tx = '{0:.02f}'.format(sigma_l[x_val])
 			ax.text(x_val, y_val, tx, va='center', ha='center')
-		else:
-			pass
+		elif y_val == 5:
+			tx = '{0:.02f}\n[{1:.02f},{2:.02f}]'.format(r_sq[x_val,0], r_ci[x_val,0,0], r_ci[x_val,0,1])
+			ax.text(x_val, y_val, tx, va='center', ha='center')
+		elif y_val == 6:
+			tx = '{0:.02f}\n[{1:.02f},{2:.02f}]'.format(r_sq[x_val,1], r_ci[x_val,1,0], r_ci[x_val,1,1])
+			ax.text(x_val, y_val, tx, va='center', ha='center')
 
 	ax.set_xticks(x_array+0.5)
 	ax.set_yticks(y_array+0.5)
 	ax.set_xticklabels(labels, rotation = 90)
-	ax.set_yticklabels(['ks', 'pca', 'n_samples', 'sigma_l', 'r_sq', 'test1', 'test2\n(use 5% confidence)'])
+	ax.set_yticklabels(['ks', 'pca1', 'pca2', 'n_samples', 'sigma_l', 'r_sq1', 'r_sq2'])
 	plt.tight_layout()
 	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 'bcd_table.pdf')))
 	plt.clf()
 
-	ks_ratio = np.array(ks_ratio)
-	plt.figure(figsize=(4,10))
-	plt.subplot(411)
-	plt.bar(np.arange(len(pca_vals)), ks_ratio[:,0] , 0.5)
-	plt.bar(np.arange(len(pca_vals))+0.5, ks_ratio[:,1] , 0.5, color='r')
-	plt.subplot(412)
-	plt.bar(np.arange(len(pca_vals)), pca_vals, 1)
-	plt.subplot(413)
-	plt.bar(np.arange(len(s_size)), s_size, 1)
-	plt.subplot(414)
-	plt.bar(np.arange(len(sigma_l)), sigma_l, 1)
-	plt.tight_layout()
-	plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 'bcd_bar.pdf')))
-	plt.clf()
+	# ks_ratio = np.array(ks_ratio)
+	# plt.figure(figsize=(4,10))
+	# plt.subplot(411)
+	# plt.bar(np.arange(len(pca_vals)), ks_ratio[:,0] , 0.5)
+	# plt.bar(np.arange(len(pca_vals))+0.5, ks_ratio[:,1] , 0.5, color='r')
+	# plt.subplot(412)
+	# plt.bar(np.arange(len(pca_vals)), pca_vals, 1)
+	# plt.subplot(413)
+	# plt.bar(np.arange(len(s_size)), s_size, 1)
+	# plt.subplot(414)
+	# plt.bar(np.arange(len(sigma_l)), sigma_l, 1)
+	# plt.tight_layout()
+	# plt.savefig(ensure_dir(os.path.join(config.plots_path, 'summary', 'bcd_bar.pdf')))
+	# plt.clf()
 
 
 if __name__ == '__main__':
@@ -448,6 +516,7 @@ if __name__ == '__main__':
 		'''
 		combo_profiles = np.concatenate([scaling_profiles, GFP_profiles, temp_profiles, profiles_dorsal, profiles_symmetric, profiles_ventral])
 		combo_lengths = np.concatenate([scaling_lengths, GFP_L, temp_L, len_dorsal, len_symmetric, len_ventral])
+		plot_all_pcs(combo_profiles)
 		pca, res = do_pca_analysis(combo_profiles, combo_lengths, 'MEGACOMBO')
 		pvals = do_ks_analysis(combo_profiles, combo_lengths, 'MEGACOMBO')
 		# results.append(res)
